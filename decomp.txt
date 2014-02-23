@@ -352,11 +352,11 @@ VV[0x03] |= 0x04;
 035C: 40 26 10           CALL    $1026
 035F: 40 0A 09           CALL    $090A
 0362: A = 0x20;
-0364: 63 28              STAW    VV:28
+0364: VV[0x28] = A;
 0366: push(VA);
 0367: 40 A2 0E           CALL    $0EA2
 036A: VA = pop();
-036B: 63 16              STAW    VV:16
+036B: VV[0x16] = A;
 036D: VV[0x15] = A;
 036F: 40 E4 05           CALL    $05E4
 0372: 40 B1 08           CALL    $08B1
@@ -365,7 +365,7 @@ VV[0x03] |= 0x04;
 0377: 86                 CALT    ($008C)
 0378: A = VV[0x28];
 037A: 40 34 04           CALL    $0434
-037D: 63 28              STAW    VV:28
+037D: VV[0x28] = A;
 037F: goto 0366
 0381: 40 1B 22           CALL    $221B
 0384: A = VV[0x16];
@@ -751,7 +751,7 @@ void reset_ram(uint8_t c)
 	HL = 0x0628;
 	A = [HL+A];
 	74 98 09           ORAW    VV:09
-	63 09              STAW    VV:09
+	VV[0x09] = A;
 	return 0;
 069F:
 	77 F4              EQI     A,$F4
@@ -2221,9 +2221,9 @@ else                 delay(200);
 11BF: 40 68 2B           CALL    $2B68
 11C2: 40 13 2C           CALL    $2C13
 11C5: A = VV[0x21];
-11C7: 63 20              STAW    VV:20
+11C7: VV[0x20] = A;
 11C9: A = VV[0x22];
-11CB: 63 25              STAW    VV:25
+11CB: VV[0x25] = A;
 11CD: HL = [0x9823];
 11D1: [0x9923] = HL;
 11D5: 5A 12              BIT     2,VV:12
@@ -2748,7 +2748,7 @@ else                 delay(200);
 	BC = pop();
 	VA = pop();
 159E:
-	63 07              STAW    VV:07
+	VV[0x07] = A;
 	70 1E 08 98        SBCD    $9808
 	return 0;
 15A5: 82                 CALT    ($0084)
@@ -2823,7 +2823,7 @@ else                 delay(200);
 162A: A = VV[0x05];
 162C: 07 4F              ANI     A,$4F
 162E: 60 9B              ORA     A,C
-1630: 63 05              STAW    VV:05
+1630: VV[0x05] = A;
 1632: goto 15B4
 1634: 82                 CALT    ($0084)
 1635: goto 1641
@@ -2963,7 +2963,7 @@ else                 delay(200);
 1730: 9E                 CALT    ($00BC)
 1731: 37 0D              LTI     A,$0D
 1733: return 0;
-1734: 63 0C              STAW    VV:0C
+1734: VV[0x0C] = A;
 1736: return 0;
 1737: 9E                 CALT    ($00BC)
 1738: 37 56              LTI     A,$56
@@ -2971,7 +2971,7 @@ else                 delay(200);
 173B: B = 0x03;
 173D: EA = A * B;
 173F: A = EAL;
-1740: 63 2C              STAW    VV:2C
+1740: VV[0x2C] = A;
 1742: return 0;
 1743: A = 0x1B;
 1745: A = 0x15;
@@ -3041,7 +3041,7 @@ else                 delay(200);
 17C0: 37 08              LTI     A,$08
 17C2: return 0;
 17C3: VV[0x03] |= 0x20
-17C6: 63 0E              STAW    VV:0E
+17C6: VV[0x0E] = A;
 17C8: return 0;
 17C9: A = 0x00;
 17CB: goto 17DE
@@ -3059,7 +3059,7 @@ else                 delay(200);
 17E2: VV[0x03] |= 0x20;
 17E5: bitmask(A); /* always returns 0 */
 17E8: 74 98 0D           ORAW    VV:0D
-17EB: 63 0D              STAW    VV:0D
+17EB: VV[0x0D] = A;
 17ED: HL = 0x9879;
 17F0: EA += HL;
 17F2: HL = EA;
@@ -3675,7 +3675,7 @@ void func_1AC2(void)
 1C1D: 48 3D              DIV     A
 1C1F: DE = EA;
 1C20: [0x9953] = DE;
-1C24: 63 34              STAW    VV:34
+1C24: VV[0x34] = A;
 1C26: VV[0x05] |= 0x08
 1C29: return 0;
 1C2A: HL = [0x9939];
@@ -4026,7 +4026,7 @@ void func_1AC2(void)
 1EF4: 59 09              BIT     1,VV:09
 1EF6: A = 0x00;
 1EF8: A = 0x1E;
-1EFA: 63 3E              STAW    VV:3E
+1EFA: VV[0x3E] = A;
 1EFC: 92                 CALT    ($00A4)
 1EFD: 40 2D 1F           CALL    $1F2D
 1F00: 40 4C 23           CALL    $234C
@@ -4624,7 +4624,7 @@ void func_22E6(void)
 	func_22E6(); /* always returns 0 */
 	55 39 02           OFFIW   VV:39,$02
 	48 25              SLL     A
-	63 3A              STAW    VV:3A
+	VV[0x3A] = A;
 	40 D0 24           CALL    $24D0
 	HL = 0x9965;
 	func_2686(); /* always returns 0 */
@@ -4635,7 +4635,7 @@ void func_22E6(void)
 	36 01              SUINB   A,$01
 	return 1;
 	74 C0 3D           ADDW    VV:3D
-	63 3A              STAW    VV:3A
+	VV[0x3A] = A;
 	DE = [0x995D];
 	if (VV[0x37] == ' ')
 		goto 23DE
@@ -4761,7 +4761,7 @@ void func_22E6(void)
 2490: 60 33              SUBNB   C,A
 2492: 52                 DCR     B
 2493: 70 1E 61 99        SBCD    $9961
-2497: 63 3A              STAW    VV:3A
+2497: VV[0x3A] = A;
 2499: VV[0x3d] = 0x00;
 249C: VV[0x37] = ' ';
 249F: return 0;
@@ -4802,7 +4802,7 @@ void func_22E6(void)
 		func_1AC2(); /* always returns 0 */
 		if (VV[0x39] & 0x02) {
 			A = [HL++];
-			63 3B              STAW    VV:3B
+			VV[0x3B] = A;
 			VV[0x3C] = 0x00;
 			EA = 0x000E;
 			EA += HL;
@@ -4966,7 +4966,7 @@ void func_25EF(void)
 	A = VV[0x3A];
 	74 C0 3D           ADDW    VV:3D
 	51                 DCR     A
-	63 3B              STAW    VV:3B
+	VV[0x3B] = A;
 	C = A;
 264C:
 	HL++;
@@ -5201,7 +5201,7 @@ void func_27BC(void)
 	40 E8 27           CALL    $27E8
 	40 03 28           CALL    $2803
 	return 0;
-	63 3B              STAW    VV:3B
+	VV[0x3B] = A;
 27E8:
 	goto 27FF
 27E9:
@@ -5249,7 +5249,7 @@ void func_27BC(void)
 	A = VV[0x3B];
 	48 25              SLL     A
 	55 38 02           OFFIW   VV:38,$02
-	63 3B              STAW    VV:3B
+	VV[0x3B] = A;
 	BC = [0xFFFF];
 	while (VV[0x3b]--) {
 		48 85              LDEAX   (HL++)
@@ -5272,7 +5272,7 @@ void func_27BC(void)
 	goto 2864;
 	C = A;
 	74 C0 3B           ADDW    VV:3B
-	63 3B              STAW    VV:3B
+	VV[0x3B] = A;
 	53                 DCR     C
 	31                 BLOCK   
 2864:
@@ -5572,7 +5572,7 @@ void func_2AEA(void)
 2B15: 74 0B 4F           ANI     C,$4F
 2B18: A = B;
 2B19: 60 9B              ORA     A,C
-2B1B: 63 4F              STAW    VV:4F
+2B1B: VV[0x4F] = A;
 2B1D: BC = [0x0000];
 2B20: 70 1E 4B 98        SBCD    $984B
 2B24: 5D 4F              BIT     5,VV:4F
@@ -6062,7 +6062,7 @@ void func_2AEA(void)
 2EA6:
 	A = C;
 	74 C0 26           ADDW    VV:26
-	63 26              STAW    VV:26
+	VV[0x26] = A;
 	91                 CALT    ($00A2)
 	return 0;
 2EAE:
@@ -6761,7 +6761,7 @@ if (DE <= EA)
 7895: 5F 00              BIT     7,VV:00
 7897: A = 0x03;
 7899: A = 0x01;
-789B: 63 1F              STAW    VV:1F
+789B: VV[0x1F] = A;
 789D: push(HL);
 789E: DE = [9917];
 78A2: EA = HL;
@@ -6780,7 +6780,7 @@ if (DE <= EA)
 78B6: EA = [0x001E];
 78B9: A = VV[0x00];
 78BB: 16 40              XRI     A,$40
-78BD: 63 00              STAW    VV:00
+78BD: VV[0x00] = A;
 78BF: HL = 0x9949;
 78C2: [HL] = EA;
 78C4: 95                 CALT    ($00AA)
@@ -6879,7 +6879,7 @@ func_7bb1();
 7978: HL = EA;
 7979: [0x994B] = HL;
 797D: A = VV[0x20];
-797F: 63 1F              STAW    VV:1F
+797F: VV[0x1F] = A;
 7981: VV[0x00] &= 0xBF;
 7984: 95                 CALT    ($00AA)
 7985: VV[0x00] &= 0xEF;
@@ -6891,7 +6891,7 @@ func_7bb1();
 7995: goto 799C
 7996: A = VV[0x00];
 7998: 16 40              XRI     A,$40
-799A: 63 00              STAW    VV:00
+799A: VV[0x00] = A;
 799C: 5E 00              BIT     6,VV:00
 799E: HL = 0x7B66;
 79A1: HL = 0x7B76;
@@ -6923,7 +6923,7 @@ func_7bb1();
 79DE: [HL] = EA;
 79E0: A = 0x1C;
 79E2: A = 0x0E;
-79E4: 63 1D              STAW    VV:1D
+79E4: VV[0x1D] = A;
 79E6: stepper_vref(0x05);
 79E9: 64 9D E0           ORI     TMM,$E0
 79EC: HL = 0x7A04;
