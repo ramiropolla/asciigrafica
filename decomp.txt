@@ -142,7 +142,7 @@ _start:
 	EI(); /* enable interrupts */
 	read_dip_to_ram();
 	MB  = b11111101; /* 0 = output; 1 = input */ /* 93c06.DI = input */
-	40 64 0C           CALL    $0C64
+	func_0C64(); /* always returns 0 */
 	A = 0x54;
 	[9817] = 0x54; /* JMP instruction */
 	[981a] = 0x54; /* JMP instruction */
@@ -152,23 +152,24 @@ _start:
 	40 33 20           CALL    $2033
 	40 23 20           CALL    $2023
 	func_2313(); /* always returns 0 */
-VV[0x4f] &= 0xf7;
-VV[0x4f] |= 0x40;
-018C: 40 B1 77           CALL    $77B1
-018F: 40 FA 2A           CALL    $2AFA
-0192: 40 A0 19           CALL    $19A0
-0195: 9D                 CALT    ($00BA)
-0196: 5B 4F              BIT     3,VV:4F
-0198: HL = 2D00;
-019B: HL = 4C80;
-019E: [993D] = HL;
-01A2: 40 5A 2B           CALL    $2B5A
-01A5: 40 A8 10           CALL    $10A8
-01A8: 40 33 02           CALL    $0233
-01AB: 55 14 20           OFFIW   VV:14,$20
-01AE: goto 01C4;
-01AF: 40 5B 0F           CALL    $0F5B
-01B2: 55 03 02           OFFIW   VV:03,$02
+	VV[0x4f] &= 0xf7;
+	VV[0x4f] |= 0x40;
+	40 B1 77           CALL    $77B1
+	40 FA 2A           CALL    $2AFA
+	40 A0 19           CALL    $19A0
+0195:
+	9D                 CALT    ($00BA)
+	5B 4F              BIT     3,VV:4F
+	HL = 0x2D00;
+	HL = 0x4C80;
+	[993D] = HL;
+	40 5A 2B           CALL    $2B5A
+	40 A8 10           CALL    $10A8
+	40 33 02           CALL    $0233
+	55 14 20           OFFIW   VV:14,$20
+	goto 01C4;
+	40 5B 0F           CALL    $0F5B
+	55 03 02           OFFIW   VV:03,$02
 	goto 0350;
 	55 03 04           OFFIW   VV:03,$04
 	goto 0392;
@@ -495,7 +496,7 @@ VV[0x03] |= 0x04;
 048A: 30 46              DCRW    VV:46
 048C: goto 0457
 VV[0x14] &= 0xfb;
-0491: 40 48 0C           CALL    $0C48
+0491: func_0C48(); /* always returns 0 */
 0494: 40 9A 0C           CALL    $0C9A
 0497: goto 0000;
 049A: 81                 CALT    ($0082)
@@ -619,7 +620,7 @@ void reset_ram(uint8_t c)
 	memset(0x9800, c, 0x2000);
 	A = [0xb800];
 	if (A != C) {
-		0C48();
+		func_0C48(); /* always returns 0 */
 		1044();
 		/* HANG */
 	}
@@ -1475,7 +1476,7 @@ A = CR1;
 if (VV[0x41] & 0x02) {
 	if (A <= 0xb8) {
 		VV[0x41] |= 0x01;
-		0C48();
+		func_0C48(); /* always returns 0 */
 		0C9A();
 		A = 0xC3;
 		[0xC004] = 0xC3;
@@ -1495,7 +1496,7 @@ void _irq0(void)
 		reset();
 	if (!(VV[0x41] & 0x01)) {
 		VV[0x41] |= 0x01;
-		0C48();
+		func_0C48(); /* always returns 0 */
 		0C9A();
 		[0xC004] = 0xC3;
 		reset();
@@ -1504,7 +1505,9 @@ void _irq0(void)
 	return; /* FROM INTERRUPT */
 }
 
-0C48:
+/* always returns 0 */
+void func_0C48(void)
+{
 	MKL    = 0xff; /* mask all interrupts */
 	MKH    = 0xff; /* mask all interrupts */
 	[0xc005] = 0x0000; /* Latches (and inverts) the data for pin 9 of the printhead. */
@@ -1512,35 +1515,37 @@ void _irq0(void)
 	EOM   = b10011001; /* to set LVx, output LVx */
 	[VV:0x0f] &= 0x3f; /* 0011 1111 */
 	[VV:0x01] &= 0xcf; /* 1100 1111 */
-	goto 0F9C;
-
-0C64:
+	func_0F9C(); /* always returns 0 */
+	return 0;
+}
+/* always returns 0 */
+void func_0C64(void)
+{
 	VV[ADDRESS_93C06] = 0x00;
-0C67:
-	93c06.WEN();
-	HL = 0x9847;
-	B = 0x00;
-	C = 0x07;
-0C71:
 	do {
-		push(BC);
-		93c06.READ();
-		[HL++] = EA;
-		BC = 0xffff;
-		if (EA != BC)
-			93c06.ERASE();
-		if (VV[ADDRESS_93C06]++ == 0xff)
+		93c06.WEN();
+		HL = 0x9847;
+		B = 0x00;
+		C = 0x07;
+		{
+			push(BC);
+			93c06.READ();
+			[HL++] = EA;
+			BC = 0xffff;
+			if (EA != BC)
+				93c06.ERASE();
+			VV[ADDRESS_93C06]++;
 			BC = pop();
-		B += EAL;
-		B += EAH;
-	} while (--C == 0xff);
-	if (B != 0x1D) {
-		if (VV[ADDRESS_93C06] <= 0x08)
-			goto 0C67;
-		func_0CD3();
-	}
+			B += EAL + EAH;
+		} while (C--);
+		if (B == 0x1d)
+			goto error_0C64;
+	} while (VV[ADDRESS_93C06] <= 0x08);
+	func_0CD3();
+error_0C64:
 	93c06.WDS();
-	return;
+	return 0;
+}
 
 0C9A:
 	0CBF();
@@ -1834,7 +1839,7 @@ char nibble_to_hex(uint8_t A)
 	8B                 CALT    ($0096)
 0EC2:
 	40 E9 2F           CALL    $2FE9
-	40 9C 0F           CALL    $0F9C
+	func_0F9C(); /* always returns 0 */
 	40 08 2E           CALL    $2E08
 	40 D0 31           CALL    $31D0
 0ECE:
@@ -1952,23 +1957,22 @@ char nibble_to_hex(uint8_t A)
 	[0xC004] |= 0x02;
 	return 0;
 
-0F9C:
+/* always returns 0 */
+void func_0F9C(void)
+{
 	func_2089(); /* always returns 0 */
-	[VV:0x14] &= 0xBF;
+	VV[0x14] &= 0xBF;
 	[0xC004] &= 0xEF;
 	if (!(VV[0x11] & 0x40)) {
-		A = 0x13;
-		TXB = A;
+		TXB = 0x13;
 		[0xC004] |= 0x01;
 		delay(1);
 	}
-	A = 0x40;
-	HL = C004;
-	70 CB              ONAX    (HL)
-	A = 0x04;
-	A = 0x0c;
+	if ((uint16_t)[0xC004] & 0x40) A = 0x0c;
+	else                           A = 0x04;
 	[0xC004] |= A;
-	return;
+	return 0;
+}
 
 uint8_t read_stable_PA(void)
 {
@@ -6752,7 +6756,7 @@ uint8_t func_7851(void)
 7867:
 	HL = 0x1047;
 	push(HL);
-	40 48 0C           CALL    $0C48
+	func_0C48(); /* always returns 0 */
 	40 9A 0C           CALL    $0C9A
 	BC = pop();
 	48 29              CALB    
