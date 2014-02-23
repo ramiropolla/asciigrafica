@@ -4634,7 +4634,7 @@ void func_22E6(void)
 	A = VV[0x3A];
 	36 01              SUINB   A,$01
 	return 1;
-	74 C0 3D           ADDW    VV:3D
+	A += VV[0x3D];
 	VV[0x3A] = A;
 	DE = [0x995D];
 	if (VV[0x37] == ' ')
@@ -4964,7 +4964,7 @@ void func_25EF(void)
 	push(HL);
 	push(DE);
 	A = VV[0x3A];
-	74 C0 3D           ADDW    VV:3D
+	A += VV[0x3D];
 	51                 DCR     A
 	VV[0x3B] = A;
 	C = A;
@@ -5271,7 +5271,7 @@ void func_27BC(void)
 	40 03 28           CALL    $2803
 	goto 2864;
 	C = A;
-	74 C0 3B           ADDW    VV:3B
+	A += VV[0x3B];
 	VV[0x3B] = A;
 	53                 DCR     C
 	31                 BLOCK   
@@ -6061,7 +6061,7 @@ void func_2AEA(void)
 
 2EA6:
 	A = C;
-	74 C0 26           ADDW    VV:26
+	A += VV[0x26];
 	VV[0x26] = A;
 	91                 CALT    ($00A2)
 	return 0;
