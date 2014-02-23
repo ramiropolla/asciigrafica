@@ -4953,15 +4953,13 @@ void func_25EF(void)
 	55 39 02           OFFIW   VV:39,$02
 	5F 39              BIT     7,VV:39
 	return 0;
-	58 40              BIT     0,VV:40
-	goto 263A
-	DE = 0x9965;
-	HL = 0x99ED;
-	goto 2640
-263A:
-	DE = 0x99ED;
-	HL = 0x9965;
-2640:
+	if (VV[0x40] & 0x01) {
+		DE = 0x9965;
+		HL = 0x99ED;
+	} else {
+		DE = 0x99ED;
+		HL = 0x9965;
+	}
 	push(HL);
 	push(HL);
 	push(DE);
