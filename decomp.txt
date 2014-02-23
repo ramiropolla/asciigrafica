@@ -4963,17 +4963,14 @@ void func_25EF(void)
 	push(HL);
 	push(HL);
 	push(DE);
-	A = VV[0x3A];
-	A += VV[0x3D];
+	A = VV[0x3A] + VV[0x3D];
 	51                 DCR     A
 	VV[0x3B] = A;
 	C = A;
-264C:
-	HL++;
-	A = [HL++];
-	[DE++] = A;
-	53                 DCR     C
-	goto 264C
+	do {
+		HL++;
+		[DE++] = [HL++];
+	} while (C--);
 	HL = pop();
 	EA = [0x0044];
 	EA += HL;
@@ -4987,13 +4984,12 @@ void func_25EF(void)
 	push(HL);
 	A = VV[0x3B];
 	C = A;
-2664:
-	A = [HL++];
-	60 8A              ANA     A,B
-	70 9A              ORAX    (DE)
-	[DE++] = A;
-	53                 DCR     C
-	goto 2664
+	do {
+		A = [HL++];
+		A &= B;
+		A |= [DE];
+		[DE++]  = A;
+	} while (C--);
 	HL = pop();
 	48 26              SLL     B
 	48 0A              SK      CY
@@ -5207,7 +5203,7 @@ void func_27BC(void)
 27E9:
 	A = B;
 	A ^= 0xff;
-	70 8D              ANAX    (HL+)
+	A &= [HL++];
 	70 6B 00 C0        MOV     C,($C000)
 	74 5B 80           OFFI    C,$80
 	goto 27FF
@@ -5448,13 +5444,13 @@ void func_28BF(void)
 2977: 74 14 FF           XRI     D,$FF
 297A: A = B;
 297B: 48 25              SLL     A
-297D: 60 8B              ANA     A,C
+297D: A &= C;
 297F: 1E                 MOV     H,A
 2980: A = C;
 2981: 48 25              SLL     A
-2983: 60 8A              ANA     A,B
+2983: A &= B;
 2985: 60 9E              ORA     A,H
-2987: 60 8C              ANA     A,D
+2987: A &= D;
 2989: HL = pop();
 298A: DE = pop();
 298B: return 0;
@@ -5464,13 +5460,13 @@ void func_298C(void)
 {
 	A = EAL;
 	48 25              SLL     A
-	60 8B              ANA     A,C
+	A &= C;
 	D = A;
 	A = EAL;
 	E = A;
 	A = C;
 	48 25              SLL     A
-	60 8D              ANA     A,E
+	A &= E;
 	D |= A;
 	A = B;
 	48 25              SLL     A
@@ -5485,7 +5481,7 @@ void func_298C(void)
 	func_29C4(); /* always returns 0 */
 	A |= E;
 	A ^= 0xff;
-	60 0C              ANA     D,A
+	D &= A;
 	BC = pop();
 	A = B;
 	return;
