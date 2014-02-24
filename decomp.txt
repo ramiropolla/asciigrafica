@@ -708,13 +708,14 @@ void reset_ram(uint8_t c)
 0620:
 	40 32 06           CALL    $0632
 	5C 07              BIT     4,VV:07
-	40 F7 07           CALL    $07F7
+	func_07F7(); /* always returns 0 */
 0628:
 	5E 04              BIT     6,VV:04
 	return 0;
 	if (VV[0x15] == 0x30)
 		VV[0x15] = 0x7F;
 	return 0;
+
 0632:
 	B = VV[0x04];
 	A = VV[0x15];
@@ -722,55 +723,31 @@ void reset_ram(uint8_t c)
 		VV[0x09] |= 0x08;
 	if (!(A & 0x80))
 		return 0;
-	if (!(VV[0x04] & 0x20))
-		goto 0665;
+	if (!(VV[0x04] & 0x20)) {
+		if (A & 0x80) {
+			VV[0x09] |= 0x80;
+			VV[0x15] &= 0x7f;
+		}
+		A = VV[0x15];
+		if (A == 0x5f)
+			VV[0x09] |= 0x08;
+		return 0;
+	}
 	B &= 0x07; /* 0000 0111 */
-	74 2A 04           GTI     B,$04
-	74 6A 00           NEI     B,$00
-	goto 0676
+	if (B > 0x04 || B == 0x00)
+		goto 0676;
+	/* 1, 2, 3, 4 */
 	HL = 0x065D;
-	48 26              SLL     B
-	B -= 0x02;
+	B <<= 1; /* 0000 111x */ /* 2, 4, 6, 8 */
+	B -= 0x02; /* 0, 2, 4, 8 */
 	EA = [HL + B];
 	BC = EA;
 	48 29              CALB    
 	return 0;
 	goto 0676
-#if 0
-065D:
-	A = EAH;
-	07 12              ANI     A,$12
-	07 1C              ANI     A,$1C
-	07 26              ANI     A,$26
-	07 47              ANI     A,$47
-	80                 CALT    ($0080)
-	goto 066E
-	VV[0x09] |= 0x80;
-	VV[0x15] &= 0x7f;
-066E:
-	A = VV[0x15];
-	67 5F              NEI     A,$5F
-	VV[0x09] |= 0x08;
-	return 0;
-#else
-065D: 0708
-065F: 0712
-0661: 071c
-0663: 0726
 
-065E: 07 12
-0660: 07 1C
-0662: 07 26
-0664: 07 47
-0666: 80
-0667: C6
-0668: 15 09 80
-066B: 05 15 7F
-066E: 01 15
-0670: 67 5F
-0672: 15 09 08
-0675: B8
-#endif
+065D: 0708, 0712, 071c, 0726
+
 0676:
 	27 AF              GTI     A,$AF
 	return 0;
@@ -810,7 +787,7 @@ void reset_ram(uint8_t c)
 	VV[0x09] |= 0x10;
 	VV[0x08] &= 0xef;
 	VV[0x09] &= 0x3f;
-	VV[0x06] &= 0xef
+	VV[0x06] &= 0xef;
 06C6:
 	5E 07              BIT     6,VV:07
 	return;
@@ -894,313 +871,70 @@ void reset_ram(uint8_t c)
 072D: D = 0x04;
 072F: goto 0730;
 0730:
-	43                 INR     C
-	HL++;
-	if (EA == [HL++])
-		goto 0738;
-	52                 DCR     B
-	goto 0730;
+	do {
+		C++;
+		HL++;
+		if (A == [HL++]) {
+			HL -= 2;
+			A = [HL];
+			VV[0x15] = A;
+			A = D;
+			if (A <= C) {
+				VV[0x08] |= 0x40;
+			} else {
+				VV[0x07] |= 0x10;
+			}
+			return 0;
+		}
+	} while (B--);
 	return 1;
-0738:
-	HL--;
-	HL--;
-	A = [HL];
-	VV[0x15] = A;
-	A = D;
-	60 AB              GTA     A,C
-0740:
-	goto 0745
-	VV[0x07] |= 0x10;
+
+00000749  15 9b 14 9d 9b bd 1f be  0b cf 7c dd 10 f5 16 f9  |..........|.....|
+00000759  80 9e 81 a9 82 b5 83 b6  84 b7 85 b8 86 c6 87 c7  |................|
+00000769  88 d0 89 d1 8a d2 8b d3  8c d4 8d d5 8e d6 8f d7  |................|
+00000779  90 d8 91 de 92 e0 93 e2  94 e3 95 e4 96 e5 97 e7  |................|
+00000789  98 e8 99 e9 9a ea 9b eb  9c ec 9d ed 9e ee 9f ef  |................|
+00000799  a0 f0 a1 f2 a2 f3 a3 f4  a4 f7 a5 fb a6 fc 86 84  |................|
+000007a9  82 86 8a 89 8e 8b 93 8c  87 8e 83 8f 84 91 8c 92  |................|
+000007b9  95 94 99 96 91 98 96 99  9b 9d 92 9f 94 a9 10 8f  |................|
+000007c9  0b 98 7c a0 16 a4 83 84  a3 86 a1 8d 84 8e 8c 91  |..|.............|
+000007d9  8a 92 8b 94 90 95 93 99  9b 9d 9a 9e 9f a1 a4 a5  |................|
+000007e9  a6 a6 9e a7 8f a8 a2 ad  15 9b 14 9d 0b af        |..............  |
+
+/* always returns 0 */
+/* 07F7 */
+void func_07F7(void)
+{
+	A = VV[0x15];
+	if (A & 0x80 || VV[0x0c] == 0x00)
+		return 0;
+	HL = 0x0815;
+	B = 0x0B;
+	do {
+		if (A == [HL++]) {
+			HL--;
+			/* VV[0x0C] from 1 to 0x0d */
+			VV[0x15] = [HL + (VV[0x0C] * 0x0C)];
+			return 0;
+		}
+	} while (B--);
 	return 0;
-0745:
-	VV[0x08] |= 0x40;
-	return 0;
+}
 
-0749: VV[0x9B] |= 0x14;
-074C: 9D                 CALT    ($00BA)
-074D: 9B                 CALT    ($00B6)
-074E: BD                 STAX    (HL+B)
-074F: 1F                 MOV     L,A
-0750: BE                 STAX    (HL+EA)
-0751: A = C;
-0752: goto 0762
-0753: 7C DD              CALF    $0CDD
-0755: 10                 EXA     
-0756: goto 074C
-0757: 16 F9              XRI     A,$F9
-0759: 80                 CALT    ($0080)
-075A: 9E                 CALT    ($00BC)
-075B: one_short_beep(); /* always returns 0 */
-075C: EA--;
-075D: 82                 CALT    ($0084)
-075E: BC = EA;
-075F: 83                 CALT    ($0086)
-0760: DE = EA;
-0761: 84                 CALT    ($0088)
-0762: HL = EA;
-0763: 85                 CALT    ($008A)
-0764: return 0;
-0765: 86                 CALT    ($008C)
-0766: goto 076D
-	if (!sw_form_feed())
-		goto 0770;
-0769: 88                 CALT    ($0090)
-076A: goto 077B
-076B: 89                 CALT    ($0092)
-076C: goto 077E
-076D: 8A                 CALT    ($0094)
-076E: goto 0781
-076F: 8B                 CALT    ($0096)
-0770: goto 0784
-0771: 8C                 CALT    ($0098)
-0772: goto 0787
-0773: 8D                 CALT    ($009A)	func_2089(); /* always returns 0 */
-0774: goto 078A
-0775: 8E                 CALT    ($009C)
-0776: goto 078D
-0777: 8F                 CALT    ($009E)	rollover_DE_from_0x9000_to_0x8000();
-0778: goto 0790
-0779:
-	if (!sw_cn6_debounced())
-		goto 0793;
-077B: 91                 CALT    ($00A2)
-077C: goto 079B
-077D: 92                 CALT    ($00A4)
-077E: goto 075F
-077F: 93                 CALT    ($00A6)	func_7ba4();
-0780: goto 0763
-0781: 94                 CALT    ($00A8)
-0782: goto 0766
-0783: 95                 CALT    ($00AA)
-0784: goto 0769
-0785:
-	if (!sw_cn7())
-		goto 076C;
-0787: 97                 CALT    ($00AE)
-0788: goto 0770
-0789: 98                 CALT    ($00B0)
-078A: goto 0773
-078B: 99                 CALT    ($00B2)
-078C: goto 0776
-078D: func_242B(); /* always returns 0 */
-078E: goto 0779
-078F: 9B                 CALT    ($00B6)
-0790: goto 077C
-0791: { memset(EA, 0x00, B*255+C); A = 0x00; }
-0792: goto 077F
-0793: 9D                 CALT    ($00BA)
-0794: goto 0782
-0795: 9E                 CALT    ($00BC)
-0796: goto 0785
-0797: [HL]--;
-0798: goto 0788
-0799: VA = pop();
-079A: goto 078B
-079B: BC = pop();
-079C: goto 078F
-079D: DE = pop();
-079E: goto 0792
-079F: HL = pop();
-07A0: goto 0795
-07A1: EA = pop();
-07A2: goto 079A
-07A3: A5                 DMOV    EA,BC
-07A4: goto 07A0
-07A5: EA = DE;
-07A6: goto 07A3
-07A7: 86                 CALT    ($008C)
-07A8: 84                 CALT    ($0088)
-07A9: 82                 CALT    ($0084)
-07AA: 86                 CALT    ($008C)
-07AB: 8A                 CALT    ($0094)
-07AC: 89                 CALT    ($0092)
-07AD: 8E                 CALT    ($009C)
-07AE: 8B                 CALT    ($0096)
-07AF: 93                 CALT    ($00A6)	func_7ba4();
-07B0: 8C                 CALT    ($0098)
-07B1: 87                 CALT    ($008E)
-07B2: 8E                 CALT    ($009C)
-07B3: 83                 CALT    ($0086)
-07B4: 8F                 CALT    ($009E)	rollover_DE_from_0x9000_to_0x8000();
-07B5: 84                 CALT    ($0088)
-07B6: 91                 CALT    ($00A2)
-07B7: 8C                 CALT    ($0098)
-07B8: 92                 CALT    ($00A4)
-07B9: 95                 CALT    ($00AA)
-07BA: 94                 CALT    ($00A8)
-07BB: 99                 CALT    ($00B2)
-07BC: 96                 CALT    ($00AC) if (!sw_cn7())
-07BD: 91                 CALT    ($00A2)
-07BE: 98                 CALT    ($00B0)
-07BF: 96                 CALT    ($00AC) if (!sw_cn7())
-07C0: 99                 CALT    ($00B2)
-07C1: 9B                 CALT    ($00B6)
-07C2: 9D                 CALT    ($00BA)
-07C3: 92                 CALT    ($00A4)
-07C4: [HL]--;
-07C5: 94                 CALT    ($00A8)
-07C6: EA--;
-07C7: 10                 EXA     
-07C8: 8F                 CALT    ($009E)	rollover_DE_from_0x9000_to_0x8000();
-07C9: A = C;
-07CA: 98                 CALT    ($00B0)
-07CB: 7C A0              CALF    $0CA0
-07CD: 16 A4              XRI     A,$A4
-07CF: 83                 CALT    ($0086)
-07D0: 84                 CALT    ($0088)
-07D1: HL = pop();
-07D2: 86                 CALT    ($008C)
-07D3: BC = pop();
-07D4: 8D                 CALT    ($009A)	func_2089(); /* always returns 0 */
-07D5: 84                 CALT    ($0088)
-07D6: 8E                 CALT    ($009C)
-07D7: 8C                 CALT    ($0098)
-07D8: 91                 CALT    ($00A2)
-07D9: 8A                 CALT    ($0094)
-07DA: 92                 CALT    ($00A4)
-07DB: 8B                 CALT    ($0096)
-07DC: 94                 CALT    ($00A8)
-07DD: 90                 CALT    ($00A0)	if (!sw_cn6_debounced())
-07DE: 95                 CALT    ($00AA)
-07DF: 93                 CALT    ($00A6)	func_7ba4();
-07E0: 99                 CALT    ($00B2)
-07E1: 9B                 CALT    ($00B6)
-07E2: 9D                 CALT    ($00BA)
-07E3: func_242B(); /* always returns 0 */
-07E4: 9E                 CALT    ($00BC)
-07E5: [HL]--;
-07E6: BC = pop();
-07E7: EA = pop();
-07E8: A5                 DMOV    EA,BC
-07E9: EA = DE;
-07EA: EA = DE;
-07EB: 9E                 CALT    ($00BC)
-07EC: EA = HL;
-07ED: 8F                 CALT    ($009E)	rollover_DE_from_0x9000_to_0x8000();
-07EE: EA++;
-07EF: DE = pop();
-07F0: AD                 LDAX    (HL+B)
-07F1: VV[0x9B] |= 0x14
-07F4: 9D                 CALT    ($00BA)
-07F5: A = C;
-07F6: AF 01              LDAX    (HL+$01)
-07F8: VV[0x47] |= 0x80
-07FB: 65 0C 00           NEIW    VV:0C,$00
-07FE: return 0;
-07FF: HL = 0x0815;
-0802: B = 0x0B;
-0804: 70 ED              NEAX    (HL+)
-0806: goto 080A
-0807: 52                 DCR     B
-0808: goto 0804
-0809: return 0;
-080A: HL--;
-080B: A = VV[0x0C];
-080D: B = 0x0C;
-080F: EA = A * B;
-0811: AE                 LDAX    (HL+EA)
-0812: VV[0x15] = A;
-0814: return 0;
-
-0815: DE--;
-0816: DE = [0x5B40];
-0819: 5C 5D              BIT     4,VV:5D
-081B: 5E 60              BIT     6,VV:60
-081D: 7B 7C              CALF    $0B7C
-081F: 7D 7E              CALF    $0D7E
-0821: DE--;
-0822: DE = [0x0500];
-0825: 0F                 MOV     A,L
-0826: 10                 EXA     
-0827: 5E 60              BIT     6,VV:60
-0829: 1E                 MOV     H,A
-082A: 02                 INX     SP
-082B: A = VV[0x16];
-082D: DE--;
-082E: DE = [0x1710];
-0831: EAH = A;
-0832: EAL = A;
-0833: 5E 60              BIT     6,VV:60
-0835: B = A;
-0836: C = A;
-0837: D = A
-0838: 11                 EXX     
-0839: 06                 illegal 
-
-DE = 0x5B40;
-5C 5D              BIT     4,VV:5D
-5E 60              BIT     6,VV:60
-7B 7C              CALF    $0B7C
-7D 7E              CALF    $0D7E
-DE--;
-DE = [0x1240];
-BC = [0x5E0D];
-60 13              XRA     C,A
-VV[0x0E] |= 0x7E;
-DE--;
-A = C;
-E = A;
-A |= 0x18;
-A = E;
-EAL = A;
-1E                 MOV     H,A
-B = A;
-C = A;
-A = H;
-D = A;
-DE--;
-DE = [0x0540];
-5C 1E              BIT     4,VV:1E
-5E 02              BIT     6,VV:02
-0865: 00                 NOP     
-0866: SP--;
-0867: A = VV[0x04];
-0869: A = D;
-086A: DE = 0x0740;
-086D: A = EAL;
-086E: A = EAH;
-086F: 5E 60              BIT     6,VV:60
-0871: 16 0A              XRI     A,$0A
-0873: 7D 7E              CALF    $0D7E	93c06.instruction(WDS);
-0875: DE--;
-0876: DE = [0x5B40];
-0879: 1F                 MOV     L,A
-087A: 5D 5E              BIT     5,VV:5E
-087C: 60 7B              EQA     C,A
-087E: 7C 7D              CALF    $0C7D
-0880: 7E 23              CALF    $0E23
-0882: A = C;
-0883: E = A;
-0884: 12                 INX     BC
-0885: BC = [0x190D];
-0888: 1E                 MOV     H,A
-0889: BC--;
-088A: VV[0x0E] |= 0x1C
-088D: DE--;
-088E: DE = [0x121D];
-0891: BC = [0x190D];
-0894: 1E                 MOV     H,A
-0895: BC--;
-0896: VV[0x0E] |= 0x1C
-0899: DE--;
-089A: DE = [0x07A0];
-089D: A = EAL;
-089E: A = EAH;
-089F: 1E                 MOV     H,A
-08A0: 60 A1              ADDNC   A,A
-08A2: A = B;
-DE = pop();
-HL = pop();
-DE--;
-DE = [0x07A0];
-A = EAL;
-A = EAH;
-1E                 MOV     H,A
-D = A
-BC = pop();
-A = B;
-DE = pop();
-HL = pop();
+/* #$@[\]^`{|}~ */
+0815 23 24 40 5b 5c 5d 5e 60 7b 7c 7d 7e
+     23 24 00 05 0f 10 5e 60 1e 02 01 16
+     23 24 10 17 18 19 5e 60 1a 1b 1c 11
+     06 24 40 5b 5c 5d 5e 60 7b 7c 7d 7e
+     23 24 40 12 14 0d 5e 60 13 15 0e 7e
+     23 0b 1d 17 18 0d 19 1e 1a 1b 0e 1c
+     23 24 40 05 5c 1e 5e 02 00 03 01 04
+     0c 24 40 07 09 08 5e 60 16 0a 7d 7e
+     23 24 40 5b 1f 5d 5e 60 7b 7c 7d 7e
+     23 0b 1d 12 14 0d 19 1e 13 15 0e 1c
+     23 24 1d 12 14 0d 19 1e 13 15 0e 1c
+     23 24 a0 07 09 08 1e 60 a1 0a a2 a3
+     23 24 a0 07 09 08 1e 1c a1 0a a2 a3
 
 08B1:
 	VV[0x11] &= 0xFB;
@@ -2665,9 +2399,9 @@ void beep_60ms(void)
 1431: A |= 0x6C;
 1433: A |= 0xCC;
 1435: A |= 0x00;
-1437: VV[0x04] |= 0x15
+1437: VV[0x04] |= 0x15;
 143A: A = EAH;
-143B: VV[0x0C] |= 0x15
+143B: VV[0x0C] |= 0x15;
 143E: BC = EA;
 143F: BC = [0x1754];
 1442: goto 1451
