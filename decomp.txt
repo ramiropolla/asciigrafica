@@ -187,6 +187,7 @@ _start:
 	goto 01C4;
 	40 CD 05           CALL    $05CD
 	goto 01C4;
+
 01CF:
 	40 A2 0E           CALL    $0EA2
 	func_2089(); /* always returns 0 */
@@ -476,91 +477,106 @@ int func_0348(void)
 0403: DW: 44 61 74 61 20 44 75 6D 70 20 4D 6F 64 65 00
           "Data Dump Mode"
 
-0412: HL = 0xFF00;
-0415: func_08FE();
-0418: clear_80_spaces(); /* always returns 0 */
-041B: 8B                 CALT    ($0096)
-041C: 40 07 17           CALL    $1707
-041F: return 1;
-0420: [0xFF89] = A;
-0424: 40 27 04           CALL    $0427
-0427: HL = 0xFF89;
-042A: A = 0x30;
-042C: 48 38              RLD     
-042E: 37 3A              LTI     A,$3A
-0430: A += 0x07;
-0432: [DE++] = A;
-0433: return 0;
-0434: 41                 INR     A
-0435: 67 7F              NEI     A,$7F
-0437: A = 0xA0;
-0439: 67 FF              NEI     A,$FF
-043B: A = 0x20;
-043D: return 0;
-043E: beep_x_y(1, 2, 1); /* 1054 */
-0441: 40 D8 31           CALL    $31D8
-0444: 40 CC 04           CALL    $04CC
-0447: 40 2B 15           CALL    $152B
-044A: 40 C9 15           CALL    $15C9
-044D: 40 FC 14           CALL    $14FC
-0450: 40 14 15           CALL    $1514
-0453: VV[0x46] = 0x04;
-0456: goto 046F
-0457: 65 46 02           NEIW    VV:46,$02
-045A: VV[0x46] = 0x01;
-045D: 65 46 01           NEIW    VV:46,$01
-0460: goto 0465
-0461: 40 2F 15           CALL    $152F
-0464: goto 046B
-0465: 40 2B 15           CALL    $152B
-0468: 40 C9 15           CALL    $15C9
-046B: BC = [0x8288];
-046E: 91                 CALT    ($00A2)
-046F: 40 D6 04           CALL    $04D6
-0472: BC = [0x0288];
-0475: 91                 CALT    ($00A2)
-0476: 48 64              SKNIT   F2 /* ONLINE BUTTON */
-0478: goto 0487
+0412:
+	HL = 0xFF00;
+	func_08FE();
+	clear_80_spaces(); /* always returns 0 */
+	8B                 CALT    ($0096)
+	40 07 17           CALL    $1707
+	return 1;
+
+0420:
+	[0xFF89] = A;
+	40 27 04           CALL    $0427
+0427:
+	HL = 0xFF89;
+	A = 0x30;
+	48 38              RLD     
+	37 3A              LTI     A,$3A
+	A += 0x07;
+	[DE++] = A;
+	return 0;
+
+0434:
+	41                 INR     A
+	67 7F              NEI     A,$7F
+	A = 0xA0;
+	67 FF              NEI     A,$FF
+	A = 0x20;
+	return 0;
+043E:
+	beep_x_y(1, 2, 1); /* 1054 */
+	40 D8 31           CALL    $31D8
+	40 CC 04           CALL    $04CC
+	40 2B 15           CALL    $152B
+	40 C9 15           CALL    $15C9
+	40 FC 14           CALL    $14FC
+	40 14 15           CALL    $1514
+	VV[0x46] = 0x04;
+	goto 046F
+0457:
+	65 46 02           NEIW    VV:46,$02
+	VV[0x46] = 0x01;
+	65 46 01           NEIW    VV:46,$01
+	goto 0465
+	40 2F 15           CALL    $152F
+	goto 046B
+0465:
+	40 2B 15           CALL    $152B
+	40 C9 15           CALL    $15C9
+046B:
+	BC = 0x8288;
+	91                 CALT    ($00A2)
+046F:
+	40 D6 04           CALL    $04D6
+	BC = 0x0288;
+	91                 CALT    ($00A2)
+0476:
+	48 64              SKNIT   F2 /* ONLINE BUTTON */
+	goto 0487
 	if (!sw_load_eject())
 		goto 047E;
-047D: goto 049A
+	goto 049A
 047E:
 	if (!sw_line_feed())
 		goto 0484;
-0482: goto 04A9
+	goto 04A9
 0484:
 	if (!sw_form_feed())
 		goto 0476;
-0486: goto 046B
-0487: wait_for_button(); /* always returns 0 */
-048A: 30 46              DCRW    VV:46
-048C: goto 0457
-VV[0x14] &= 0xfb;
-0491: func_0C48(); /* always returns 0 */
-0494: 40 9A 0C           CALL    $0C9A
-0497: goto 0000;
-049A: one_short_beep(); /* always returns 0 */
-049B: wait_for_button(); /* always returns 0 */
-049E: 40 B8 04           CALL    $04B8
-04A1: 37 FF              LTI     A,$FF
-04A3: goto 0476
-04A5: 41                 INR     A
-04A6: 3B                 STAX    (HL)
-04A7: goto 0476
-04A9: one_short_beep(); /* always returns 0 */
-04AA: wait_for_button(); /* always returns 0 */
-04AD: 40 B8 04           CALL    $04B8
-04B0: 27 00              GTI     A,$00
-04B2: goto 0476
-04B4: 51                 DCR     A
-04B5: 3B                 STAX    (HL)
-04B6: goto 0476
-04B8: A = VV[0x46];
-04BA: EA = [0x9850];
-04BD: EA += A;
-04BF: HL = EA;
-04C0: A = [HL];
-04C1: return 0;
+	goto 046B
+0487:
+	wait_for_button(); /* always returns 0 */
+	30 46              DCRW    VV:46
+	goto 0457
+	VV[0x14] &= 0xfb;
+	func_0C48(); /* always returns 0 */
+	40 9A 0C           CALL    $0C9A
+	goto 0000;
+	one_short_beep(); /* always returns 0 */
+	wait_for_button(); /* always returns 0 */
+	40 B8 04           CALL    $04B8
+	37 FF              LTI     A,$FF
+	goto 0476
+	41                 INR     A
+	3B                 STAX    (HL)
+	goto 0476
+04A9:
+	one_short_beep(); /* always returns 0 */
+	wait_for_button(); /* always returns 0 */
+	40 B8 04           CALL    $04B8
+	27 00              GTI     A,$00
+	goto 0476
+	51                 DCR     A
+	3B                 STAX    (HL)
+	goto 0476
+04B8:
+	A = VV[0x46];
+	EA = [0x9850];
+	EA += A;
+	HL = EA;
+	A = [HL];
+	return 0;
 
 04CC:
 	EA -= BC;
@@ -602,32 +618,34 @@ VV[0x14] &= 0xfb;
 	VA = pop();
 0511:
 	40 59 0E           CALL    $0E59
-0514: A = EAL;
-0515: VV[0x15] = A;
-0517: push(EA);
-0518: 40 CD 05           CALL    $05CD
-051B: EA = pop();
-051C: A = EAH;
-051D: VV[0x15] = A;
-051F: 40 CD 05           CALL    $05CD
-0522: A = 0x48;
-0524: VV[0x15] = A;
-0526: 40 CD 05           CALL    $05CD
-0529: 40 4C 05           CALL    $054C
-052C: 86                 CALT    ($008C)
-052D: VV[0x2C] = 0x15;
-0530: VV[0x45] = 0x03;
-0533: VV[0x15] = 0x48;
-0536: 40 E4 05           CALL    $05E4
-0539: 40 B1 08           CALL    $08B1
-053C: goto 0541
-053D: 40 1B 22           CALL    $221B
-0540: goto 0533
-0541: 40 4C 05           CALL    $054C
-0544: 86                 CALT    ($008C)
-0545: 30 45              DCRW    VV:45
-0547: goto 0533
-0548: VV[0x2C] = 0x24;
+	A = EAL;
+	VV[0x15] = A;
+	push(EA);
+	40 CD 05           CALL    $05CD
+	EA = pop();
+	A = EAH;
+	VV[0x15] = A;
+	40 CD 05           CALL    $05CD
+	A = 0x48;
+	VV[0x15] = A;
+	40 CD 05           CALL    $05CD
+	40 4C 05           CALL    $054C
+	86                 CALT    ($008C)
+	VV[0x2C] = 0x15;
+	VV[0x45] = 0x03;
+0533:
+	VV[0x15] = 0x48;
+	40 E4 05           CALL    $05E4
+	40 B1 08           CALL    $08B1
+	goto 0541
+	40 1B 22           CALL    $221B
+	goto 0533
+0541:
+	40 4C 05           CALL    $054C
+	86                 CALT    ($008C)
+	30 45              DCRW    VV:45
+	goto 0533
+	VV[0x2C] = 0x24;
 	return 0;
 
 054C:
@@ -856,26 +874,29 @@ void reset_ram(uint8_t c)
 0706: EAH = A;
 0707: A = EAH;
 
-0708: HL = 0x0749;
-070B: B = 0x2E;
-070D: C = 0x00;
-070F: D = 0x09;
-0711: goto 0730;
-0712: HL = 0x07A7;
-0715: B = 0x0F;
-0717: C = 0x00;
-0719: D = 0x01;
-071B: goto 0730;
-071C: HL = 0x07C7;
-071F: B = 0x14;
-0721: C = 0x00;
-0723: D = 0x05;
-0725: goto 0730;
-0726: HL = 0x07F1;
-0729: B = 0x02;
-072B: C = 0x00;
-072D: D = 0x04;
-072F: goto 0730;
+0708:
+	HL = 0x0749;
+	B = 0x2E;
+	C = 0x00;
+	D = 0x09;
+	goto 0730;
+0712:
+	HL = 0x07A7;
+	B = 0x0F;
+	C = 0x00;
+	D = 0x01;
+	goto 0730;
+071C:
+	HL = 0x07C7;
+	B = 0x14;
+	C = 0x00;
+	D = 0x05;
+	goto 0730;
+0726:
+	HL = 0x07F1;
+	B = 0x02;
+	C = 0x00;
+	D = 0x04;
 0730:
 	do {
 		C++;
@@ -2008,250 +2029,278 @@ void func_10A8(void)
 	48 25              SLL     A
 	48 25              SLL     A
 	HL = 0x1309;
-1106: DE = [0x9821];
-1109: 48 8C              LDEAX   (HL+A)
-110B: [DE++] = EA;
-110D: A += 0x02;
-110F: 48 8C              LDEAX   (HL+A)
-1111: [DE] = EA;
-1113: 40 83 12           CALL    $1283
-1116: goto 118C
-1118: VV[0x13] |= 0x02
-111B: 40 FA 11           CALL    $11FA
-111E: 86                 CALT    ($008C)
-111F: BC = 0x0000;
-1122: HL = [0x993D];
-1126: EA = HL;
-1127: HL = [0x9901];
-112B: EA -= HL;
-112D: A = VV[0x22];
-112F: 48 3D              DIV     A
-1131: DE = EA;
-1132: HL = 0x9941;
-1135: EA = [HL];
-1137: 74 AE              DGT     EA,DE
-1139: goto 1144
-113A: VV[0x12] |= 0x10
-113D: [0x9941] = DE;
-1141: EA -= DE;
-1143: BC = EA;
-1144: 70 1E 3F 99        SBCD    $993F
-1148: DE = [0x9941];
-114C: EA = DE;
-114D: A = VV[0x22];
-114F: 84                 CALT    ($0088)
-1150: HL = 0x993B;
-1153: [HL] = EA;
-1155: HL = [0x9941];
-1159: EA = HL;
-115A: 55 12 08           OFFIW   VV:12,$08
-115D: EA <<= 1;
-115F: HL = EA;
-1160: EA = [0x1000];
-1163: EA -= HL;
-1165: HL = [0x9915];
-1169: 74 BF              DLT     EA,HL
-116B: goto 1170
-116C: push(EA);
+	DE = 0x9821;
+	48 8C              LDEAX   (HL+A)
+	[DE++] = EA;
+	A += 0x02;
+	48 8C              LDEAX   (HL+A)
+	[DE] = EA;
+	40 83 12           CALL    $1283
+	goto 118C
+	VV[0x13] |= 0x02
+	40 FA 11           CALL    $11FA
+	86                 CALT    ($008C)
+	BC = 0x0000;
+	HL = [0x993D];
+	EA = HL;
+	HL = [0x9901];
+	EA -= HL;
+	A = VV[0x22];
+	48 3D              DIV     A
+	DE = EA;
+	HL = 0x9941;
+	EA = [HL];
+	74 AE              DGT     EA,DE
+	goto 1144
+	VV[0x12] |= 0x10
+	[0x9941] = DE;
+	EA -= DE;
+	BC = EA;
+1144:
+	70 1E 3F 99        SBCD    $993F
+	DE = [0x9941];
+	EA = DE;
+	A = VV[0x22];
+	84                 CALT    ($0088)
+	HL = 0x993B;
+	[HL] = EA;
+	HL = [0x9941];
+	EA = HL;
+	55 12 08           OFFIW   VV:12,$08
+	EA <<= 1;
+	HL = EA;
+	EA = [0x1000];
+	EA -= HL;
+1165:
+	HL = [0x9915];
+	74 BF              DLT     EA,HL
+	goto 1170
+	push(EA);
 	func_2089(); /* always returns 0 */
-116E: EA = pop();
-116F: goto 1165
-1170: HL = [0x9901];
-1174: [0x9955] = HL;
-1178: VV[0x03] |= 0x80
-117B: VV[0x05] |= 0x02
-117E: 40 A6 11           CALL    $11A6
-1181: VV[0x05] &= 0xFD;
-1184: HL = 0x993F;
-1187: EA = [HL];
-1189: 40 96 11           CALL    $1196
-118C: VV[0x12] = 0x00;
-118F: return 0;
-1190: 40 83 12           CALL    $1283
-1193: 00                 NOP     
-1194: EA = HL;
-1195: goto 1189
-1196: 55 12 08           OFFIW   VV:12,$08
-1199: EA <<= 1;
-119B: HL = 0x0000;
-119E: 74 EF              DNE     EA,HL
-11A0: return 0;
-11A1: push(EA);
-11A2: 8E                 CALT    ($009C)
-11A3: EA = pop();
-11A4: EA--;
-11A5: goto 119B
-11A6: 40 0B 12           CALL    $120B
-11A9: return 0;
-11AA: 8B                 CALT    ($0096)
-11AB: 40 0C 1F           CALL    $1F0C
-11AE: BC = [0x993B];
-11B2: HL = 0x9901;
-11B5: EA = [HL];
-11B7: EA += BC;
-11B9: [HL] = EA;
-11BB: 59 12              BIT     1,VV:12
-11BD: goto 11EE
-11BF: 40 68 2B           CALL    $2B68
-11C2: 40 13 2C           CALL    $2C13
-11C5: A = VV[0x21];
-11C7: VV[0x20] = A;
-11C9: A = VV[0x22];
-11CB: VV[0x25] = A;
-11CD: HL = [0x9823];
-11D1: [0x9923] = HL;
-11D5: 5A 12              BIT     2,VV:12
-11D7: HL = 0xC005;
-11DA: HL = 0xC006;
-11DD: A = [HL];
-11DE: 40 94 12           CALL    $1294
-11E1: VV[0x12] |= 0x80
-11E4: VV[0x00] &= 0xFB;
-11E7: 92                 CALT    ($00A4)
-11E8: 40 2D 1F           CALL    $1F2D
-11EB: 40 0C 1F           CALL    $1F0C
-11EE: HL = [0x993D];
-11F2: 5C 12              BIT     4,VV:12
-11F4: HL = [0x9901];
-11F8: 85                 CALT    ($008A)
-11F9: return 0;
-11FA: HL = [0x9901];
-11FE: EA = HL;
-11FF: A = VV[0x22];
-1201: EA += A;
-1203: HL = [0x993D];
-1207: 74 AF              DGT     EA,HL
-1209: return 1;
-120A: return 0;
-120B: VV[0x12] |= 0x02
-120E: BC = [0x9941];
-1212: DE = [0x9913];
-1216: A = [DE++];
-1217: 8F                 CALT    ($009E)	rollover_DE_from_0x9000_to_0x8000();
-1218: 77 00              EQI     A,$00
-121A: goto 123D
-121C: 5B 12              BIT     3,VV:12
-121E: goto 1224
-121F: A = [DE++];
-1220: 8F                 CALT    ($009E)	rollover_DE_from_0x9000_to_0x8000();
-1221: 57 80              OFFI    A,$80
-1223: goto 123D
-1224: BC--;
-1225: EA = 0x0000;
-1228: 74 FD              DEQ     EA,BC
-122A: goto 1216
-122B: VV[0x12] &= 0xFD;
-122E: 55 12 10           OFFIW   VV:12,$10
-1231: goto 123D
-1232: DE = [0x993B];
-1236: 40 0B 19           CALL    $190B
-1239: goto 124E
-123A: BC = 0x0000;
-123D: HL = [0x9941];
-1241: EA = HL;
-1242: EA -= BC;
-1244: HL = EA;
-1245: [0x9943] = HL;
-1249: 70 1E 41 99        SBCD    $9941
-124D: return 1;
-124E: HL = 0x993F;
-1251: EA = [HL];
-1253: BC = [0x9941];
-1257: EA += BC;
-1259: [HL] = EA;
-125B: return 0;
-125C: DE = [0x9941];
-1260: EA = 0x0000;
-1263: 74 EE              DNE     EA,DE
-1265: return 0;
-1266: DE--;
-1267: [0x9941] = DE;
-126B: 40 27 21           CALL    $2127
-126E: 00                 NOP     
-126F: EA = 0x0000;
-1272: EAH = A;
-1273: 5B 12              BIT     3,VV:12
-1275: goto 127D
-1276: push(EA);
-1277: 40 27 21           CALL    $2127
-127A: 00                 NOP     
-127B: EA = pop();
-127C: EAL = A;
-127D: HL = 0x9925;
-1280: [HL] = EA;
-1282: return 1;
-1283: 8E                 CALT    ($009C)
-1284: L = A;
-1285: push(HL);
-1286: 9E                 CALT    ($00BC)
-1287: HL = pop();
-1288: H = A;
-1289: EA = 0x0000;
-128C: 74 EF              DNE     EA,HL
-128E: return 0;
-128F: [0x9941] = HL;
-1293: return 1;
-1294: HL = 0x9943;
-1297: EA = [HL];
-1299: 40 96 11           CALL    $1196
-129C: HL = 0x9943;
-129F: EA = [HL];
-12A1: A = VV[0x22];
-12A3: 84                 CALT    ($0088)
-12A4: HL = [0x9903];
-12A8: EA += HL;
-12AA: BC = EA;
-12AB: 70 1E 0B 99        SBCD    $990B
-12AF: HL = 0x9941;
-12B2: EA = [HL];
-12B4: 55 12 08           OFFIW   VV:12,$08
-12B7: EA <<= 1;
-12B9: BC = EA;
-12BA: BC--;
-12BB: DE = [0x9913];
-12BF: EA = DE;
-12C0: EA += BC;
-12C2: DE = EA;
-12C3: BC = 0x9000;
-12C6:
+	EA = pop();
+	goto 1165
+1170:
+	HL = [0x9901];
+	[0x9955] = HL;
+	VV[0x03] |= 0x80
+	VV[0x05] |= 0x02
+	40 A6 11           CALL    $11A6
+	VV[0x05] &= 0xFD;
+	HL = 0x993F;
+	EA = [HL];
+1189:
+	40 96 11           CALL    $1196
+118C:
+	VV[0x12] = 0x00;
+	return 0;
+1190:
+	40 83 12           CALL    $1283
+	00                 NOP     
+	EA = HL;
+	goto 1189
+
+1196:
+	55 12 08           OFFIW   VV:12,$08
+	EA <<= 1;
+119B:
+	HL = 0x0000;
+	74 EF              DNE     EA,HL
+	return 0;
+	push(EA);
+	8E                 CALT    ($009C)
+	EA = pop();
+	EA--;
+	goto 119B
+
+11A6:
+	40 0B 12           CALL    $120B
+	return 0;
+	8B                 CALT    ($0096)
+	40 0C 1F           CALL    $1F0C
+	BC = [0x993B];
+	HL = 0x9901;
+	EA = [HL];
+	EA += BC;
+	[HL] = EA;
+	59 12              BIT     1,VV:12
+	goto 11EE
+	40 68 2B           CALL    $2B68
+	40 13 2C           CALL    $2C13
+	A = VV[0x21];
+	VV[0x20] = A;
+	A = VV[0x22];
+	VV[0x25] = A;
+	HL = [0x9823];
+	[0x9923] = HL;
+	5A 12              BIT     2,VV:12
+	HL = 0xC005;
+	HL = 0xC006;
+	A = [HL];
+	40 94 12           CALL    $1294
+	VV[0x12] |= 0x80
+	VV[0x00] &= 0xFB;
+	92                 CALT    ($00A4)
+	40 2D 1F           CALL    $1F2D
+	40 0C 1F           CALL    $1F0C
+11EE:
+	HL = [0x993D];
+	5C 12              BIT     4,VV:12
+	HL = [0x9901];
+	85                 CALT    ($008A)
+	return 0;
+11FA:
+	HL = [0x9901];
+	EA = HL;
+	A = VV[0x22];
+	EA += A;
+	HL = [0x993D];
+	74 AF              DGT     EA,HL
+	return 1;
+	return 0;
+
+120B:
+	VV[0x12] |= 0x02
+	BC = [0x9941];
+	DE = [0x9913];
+1216:
+	A = [DE++];
+	8F                 CALT    ($009E)	rollover_DE_from_0x9000_to_0x8000();
+	77 00              EQI     A,$00
+	goto 123D
+	5B 12              BIT     3,VV:12
+	goto 1224
+	A = [DE++];
+	8F                 CALT    ($009E)	rollover_DE_from_0x9000_to_0x8000();
+	57 80              OFFI    A,$80
+	goto 123D
+1224:
+	BC--;
+	EA = 0x0000;
+	74 FD              DEQ     EA,BC
+	goto 1216
+	VV[0x12] &= 0xFD;
+	55 12 10           OFFIW   VV:12,$10
+	goto 123D
+	DE = [0x993B];
+	40 0B 19           CALL    $190B
+	goto 124E
+	BC = 0x0000;
+123D:
+	HL = [0x9941];
+	EA = HL;
+	EA -= BC;
+	HL = EA;
+	[0x9943] = HL;
+	70 1E 41 99        SBCD    $9941
+	return 1;
+124E:
+	HL = 0x993F;
+	EA = [HL];
+	BC = [0x9941];
+	EA += BC;
+	[HL] = EA;
+	return 0;
+125C:
+	DE = [0x9941];
+	EA = 0x0000;
+	74 EE              DNE     EA,DE
+	return 0;
+	DE--;
+	[0x9941] = DE;
+	40 27 21           CALL    $2127
+	00                 NOP     
+	EA = 0x0000;
+	EAH = A;
+	5B 12              BIT     3,VV:12
+	goto 127D
+	push(EA);
+	40 27 21           CALL    $2127
+	00                 NOP     
+	EA = pop();
+	EAL = A;
+127D:
+	HL = 0x9925;
+	[HL] = EA;
+	return 1;
+
+1283:
+	8E                 CALT    ($009C)
+	L = A;
+	push(HL);
+	9E                 CALT    ($00BC)
+	HL = pop();
+	H = A;
+	EA = 0x0000;
+	74 EF              DNE     EA,HL
+	return 0;
+	[0x9941] = HL;
+	return 1;
+
+1294:
+	HL = 0x9943;
+	EA = [HL];
+	40 96 11           CALL    $1196
+	HL = 0x9943;
+	EA = [HL];
+	A = VV[0x22];
+	84                 CALT    ($0088)
+	HL = [0x9903];
+	EA += HL;
+	BC = EA;
+	70 1E 0B 99        SBCD    $990B
+	HL = 0x9941;
+	EA = [HL];
+	55 12 08           OFFIW   VV:12,$08
+	EA <<= 1;
+	BC = EA;
+	BC--;
+	DE = [0x9913];
+	EA = DE;
+	EA += BC;
+	DE = EA;
+	BC = 0x9000;
 	int borrow = (EA >= BC);
 	EA -= BC;
 	if (!borrow)
 		goto 12CF;
-12C9: BC = 0x8000;
-12CC: EA += BC;
-12CE: DE = EA;
-12CF: BC = 0x0000;
-12D2: 5B 12              BIT     3,VV:12
-12D4: goto 12DC
-12D5: 2E                 LDAX    (DE-)
-12D6: rollover_DE_from_0x7fff_to_0x8fff();
-12D9: 57 80              OFFI    A,$80
-12DB: goto 12E5
-12DC: 2E                 LDAX    (DE-)
-12DD: rollover_DE_from_0x7fff_to_0x8fff();
-12E0: 77 00              EQI     A,$00
-12E2: goto 12E5
-12E3: 12                 INX     BC
-12E4: goto 12D2
-12E5: HL = 0x9941;
-12E8: EA = [HL];
-12EA: EA -= BC;
-12EC: [HL] = EA;
-12EE: HL = 0x993F;
-12F1: EA = [HL];
-12F3: EA += BC;
-12F5: [HL] = EA;
-12F7: EA = BC;
-12F8: A = VV[0x22];
-12FA: 84                 CALT    ($0088)
-12FB: BC = EA;
-12FC: HL = 0x9901;
-12FF: EA = [HL];
-1301: EA -= BC;
-1303: HL = 0x990D;
-1306: [HL] = EA;
-1308: return 0;
+	BC = 0x8000;
+	EA += BC;
+	DE = EA;
+12CF:
+	BC = 0x0000;
+12D2:
+	5B 12              BIT     3,VV:12
+	goto 12DC
+	2E                 LDAX    (DE-)
+	rollover_DE_from_0x7fff_to_0x8fff();
+	57 80              OFFI    A,$80
+	goto 12E5
+12DC:
+	2E                 LDAX    (DE-)
+	rollover_DE_from_0x7fff_to_0x8fff();
+	77 00              EQI     A,$00
+	goto 12E5
+	12                 INX     BC
+	goto 12D2
+12E5:
+	HL = 0x9941;
+	EA = [HL];
+	EA -= BC;
+	[HL] = EA;
+	HL = 0x993F;
+	EA = [HL];
+	EA += BC;
+	[HL] = EA;
+	EA = BC;
+	A = VV[0x22];
+	84                 CALT    ($0088)
+	BC = EA;
+	HL = 0x9901;
+	EA = [HL];
+	EA -= BC;
+	HL = 0x990D;
+	[HL] = EA;
+	return 0;
 
 1309: 00                 NOP     
 130A: EAH = A;
@@ -2412,9 +2461,9 @@ void func_10A8(void)
 141F: A |= 0xB1;
 1421: EAL = A;
 1422: DE = EA;
-1423: BC = [0x7875];
+1423: BC = 0x7875;
 1426: DE = EA;
-1427: BC = [0x14B6];
+1427: BC = 0x14B6;
 142A: push(BC);
 142B: 10                 EXA     
 142C: goto 1446
@@ -4185,8 +4234,8 @@ int func_211B(void)
 	rollover_DE_from_0x9000_to_0x8000();
 	[0x9913] = DE;
 	MKH &= 0xfd; /* 1111 1101 */
-	5E 11              BIT     6,VV:11
-	goto 2169
+	if (!(VV[0x11] & 0x40))
+		goto 2169;
 	DE = 0x9915;
 	EA = [DE];
 	HL = 0x0210;
@@ -5747,106 +5796,127 @@ void func_2AEA(void)
 	if (!sw_cn6_debounced())
 		goto 2D2E;
 	return 1;
-2D2E: BC = 0x0000;
-2D31: 70 1E 2B 99        SBCD    $992B
-2D35: 70 1E 29 99        SBCD    $9929
-2D39: 70 1E 4B 98        SBCD    $984B
-2D3D: VV[0x26] = 0x00;
-2D40: VV[0x13] &= 0xFD;
-2D43: VV[0x14] &= 0xFD;
-2D46: return 0;
-2D47: 59 14              BIT     1,VV:14
-2D49: 40 79 2D           CALL    $2D79
+2D2E:
+	BC = 0x0000;
+	70 1E 2B 99        SBCD    $992B
+	70 1E 29 99        SBCD    $9929
+	70 1E 4B 98        SBCD    $984B
+	VV[0x26] = 0x00;
+	VV[0x13] &= 0xFD;
+	VV[0x14] &= 0xFD;
+	return 0;
+2D47:
+	59 14              BIT     1,VV:14
+	40 79 2D           CALL    $2D79
 	if (!sw_cn6_debounced())
 		goto 2D5B;
-2D4E: BC = [0x8AB6];
-2D51: 91                 CALT    ($00A2)
-2D52: BC = [0x01DE];
-2D55: 40 D2 2E           CALL    $2ED2
-2D58: goto 2D07
-2D5A: goto 2D5F
+	BC = 0x8AB6;
+	91                 CALT    ($00A2)
+	BC = 0x01DE;
+	40 D2 2E           CALL    $2ED2
+	goto 2D07
+	goto 2D5F
 2D5B:
 	if (!sw_cn6_debounced())
 		goto 2D5F;
-2D5D: goto 2D07
-2D5F: 40 D0 31           CALL    $31D0
-2D62: BC = [0x9843];
-2D66: EA = [0x0181];
-2D69: EA += BC;
-2D6B: BC = EA;
-2D6C: 91                 CALT    ($00A2)
-2D6D: goto 2D03
-2D6F: BC = [0x04AE];
-2D72: 40 E5 32           CALL    $32E5
-2D75: BC = [0x0393];
-2D78: return 0;
-2D79: 5D 4F              BIT     5,VV:4F
-2D7B: goto 2D91
-2D7D: 40 08 2E           CALL    $2E08
-2D80: 40 D0 31           CALL    $31D0
+	goto 2D07
+2D5F:
+	40 D0 31           CALL    $31D0
+	BC = [0x9843];
+	EA = 0x0181;
+	EA += BC;
+	BC = EA;
+	91                 CALT    ($00A2)
+	goto 2D03
+
+2D6F:
+	BC = 0x04AE;
+	40 E5 32           CALL    $32E5
+	BC = 0x0393;
+	return 0;
+2D79:
+	5D 4F              BIT     5,VV:4F
+	goto 2D91
+
+2D7D:
+	40 08 2E           CALL    $2E08
+	40 D0 31           CALL    $31D0
 	BC = 0x2520; /* '% ' */
 	if (!func_32E5())
 		BC = 0x0BD0;
-2D8C: 91                 CALT    ($00A2)
-2D8D: 40 6F 2D           CALL    $2D6F
-2D90: goto 2D9E
+	91                 CALT    ($00A2)
+	40 6F 2D           CALL    $2D6F
+	goto 2D9E
+
 2D91:
 	if (!sw_cn6_debounced())
 		goto 2D94;
-2D93: goto 2D7D
-2D94: 40 D0 31           CALL    $31D0
-2D97: BC = [0x8D80];
-2D9A: 91                 CALT    ($00A2)
-2D9B: BC = [0x0070];
-2D9E: 40 AE 2E           CALL    $2EAE
-2DA1: goto 2DAE
-2DA2: VV[0x14] &= 0xEF;
-2DA5: VV[0x13] &= 0xDF;
-2DA8: VV[0x14] |= 0x02
-2DAB: goto 32BF;
-2DAE: VV[0x13] |= 0x20
-2DB1: 40 E5 32           CALL    $32E5
-2DB4: goto 2DBC
-2DB5: 40 25 2D           CALL    $2D25
-2DB8: VV[0x13] |= 0x02
-2DBB: goto 2DC2
-2DBC: 40 B9 32           CALL    $32B9
-2DBF: 40 C5 2D           CALL    $2DC5
-2DC2: goto 2C2B;
-2DC5: 5D 4F              BIT     5,VV:4F
-2DC7: goto 2DE4
-2DC8: EA = [0x0BD0];
-2DCB: HL = [0x992B];
-2DCF: EA += HL;
-2DD1: A = VV[0x26];
-2DD3: EA += A;
-2DD5: HL = [0x992D];
-2DD9: 74 BF              DLT     EA,HL
-2DDB: goto 2DDE
-2DDC: goto 2DFF
-2DDE: EA -= HL;
-2DE0: 74 BF              DLT     EA,HL
-2DE2: goto 2DDE
-2DE3: goto 2DFF
-2DE4: HL = [0x992B];
-2DE8: EA = HL;
-2DE9: A = VV[0x26];
-2DEB: EA += A;
-2DED: HL = 0x0D80;
+	goto 2D7D
+2D94:
+	40 D0 31           CALL    $31D0
+	BC = 0x8D80;
+	91                 CALT    ($00A2)
+	BC = 0x0070;
+2D9E:
+	40 AE 2E           CALL    $2EAE
+	goto 2DAE
+	VV[0x14] &= 0xEF;
+2DA5:
+	VV[0x13] &= 0xDF;
+	VV[0x14] |= 0x02;
+	goto 32BF;
+2DAE:
+	VV[0x13] |= 0x20
+	40 E5 32           CALL    $32E5
+	goto 2DBC
+	40 25 2D           CALL    $2D25
+	VV[0x13] |= 0x02
+	goto 2DC2
+2DBC:
+	40 B9 32           CALL    $32B9
+	40 C5 2D           CALL    $2DC5
+2DC2:
+	goto 2C2B;
+2DC5:
+	5D 4F              BIT     5,VV:4F
+	goto 2DE4
+	EA = 0x0BD0;
+	HL = [0x992B];
+	EA += HL;
+	A = VV[0x26];
+	EA += A;
+	HL = [0x992D];
+	74 BF              DLT     EA,HL
+	goto 2DDE
+	goto 2DFF
+2DDE:
+	EA -= HL;
+	74 BF              DLT     EA,HL
+	goto 2DDE
+	goto 2DFF
+2DE4:
+	HL = [0x992B];
+	EA = HL;
+	A = VV[0x26];
+	EA += A;
+	HL = 0x0D80;
 	int borrow = (EA >= HL);
 	EA -= HL;
 	if (!borrow)
 		goto 2DF4;
-2DF3: goto 2DFF
-2DF4: HL = [0x9931];
-2DF8: DE = 0x0000;
-2DFB: 74 A7              DADDNC  EA,HL
-2DFD: goto 2DFF
-2DFE: goto 2DFB
-2DFF: HL = EA;
-2E00: [0x992B] = HL;
-2E04: VV[0x26] = 0x00;
-2E07: return 0;
+	goto 2DFF
+2DF4:
+	HL = [0x9931];
+	DE = 0x0000;
+2DFB:
+	74 A7              DADDNC  EA,HL
+	goto 2DFF
+	goto 2DFB
+2DFF:
+	HL = EA;
+	[0x992B] = HL;
+	VV[0x26] = 0x00;
+	return 0;
 
 2E08:
 	disable_interrupts();
@@ -6007,300 +6077,351 @@ int sw_cn4(void)
 	return 1;
 2ED2:
 	func_2089(); /* always returns 0 */
-2ED3: HL = 0x990F;
-2ED6: EA = [HL];
-2ED8: DE = 0x0000;
-2EDB: 74 AE              DGT     EA,DE
-2EDD: return 0;
-2EDE: 55 4F 10           OFFIW   VV:4F,$10
-2EE1: goto 2ED2
-2EE2: DE = EA;
-2EE3: EA = [HL];
-2EE5: 74 EE              DNE     EA,DE
-2EE7: goto 2EE3
-2EE8: 55 4F 10           OFFIW   VV:4F,$10
-2EEB: goto 2ED2
-2EEC: 40 F0 2E           CALL    $2EF0
-2EEF: return 1;
-2EF0: disable_interrupts();
-2EF1: 55 01 10           OFFIW   VV:01,$10
-2EF4: 55 01 22           OFFIW   VV:01,$22
-2EF7: goto 2EFE
-2EF8: 70 1E 0F 99        SBCD    $990F
-2EFC: enable_interrupts();
-2EFD: return 0;
-2EFE: enable_interrupts();
-2EFF: 40 B9 32           CALL    $32B9
-2F02: 55 01 80           OFFIW   VV:01,$80
-2F05: B |= 0x80;
-2F08: 91                 CALT    ($00A2)
-2F09: return 0;
-2F0A: 59 13              BIT     1,VV:13
-2F0C: 55 03 02           OFFIW   VV:03,$02
-2F0F: return 1;
-2F10: 5C 13              BIT     4,VV:13
-2F12: goto 2F1A
-2F13: 40 67 30           CALL    $3067
-2F16: 40 B3 2F           CALL    $2FB3
-2F19: goto 2F34
-2F1A: 45 0F C0           ONIW    VV:0F,$C0
-2F1D: 55 01 30           OFFIW   VV:01,$30
-2F20: return 1;
-2F21: 40 EC 32           CALL    $32EC
-2F24: 59 14              BIT     1,VV:14
-2F26: 55 13 02           OFFIW   VV:13,$02
-2F29: return 1;
-2F2A: EA = 0x0000;
-2F2D: BC = [0x992B];
-2F31: 74 FD              DEQ     EA,BC
-2F33: return 1;
-2F34: 5C 13              BIT     4,VV:13
-2F36: 55 4F 80           OFFIW   VV:4F,$80
-2F39: goto 2F43
-2F3A: 40 EC 32           CALL    $32EC
-2F3D: goto 2F52
-2F3E: 55 01 04           OFFIW   VV:01,$04
-2F41: goto 2F52
-2F42: goto 2F4C
-2F43: BC = [0x9A75];
-2F47: EA = [0x03FF];
-2F4A: 74 ED              DNE     EA,BC
+	HL = 0x990F;
+	EA = [HL];
+	DE = 0x0000;
+	74 AE              DGT     EA,DE
+	return 0;
+	55 4F 10           OFFIW   VV:4F,$10
+	goto 2ED2
+	DE = EA;
+2EE3:
+	EA = [HL];
+	74 EE              DNE     EA,DE
+	goto 2EE3
+	55 4F 10           OFFIW   VV:4F,$10
+	goto 2ED2
+	40 F0 2E           CALL    $2EF0
+	return 1;
+2EF0:
+	disable_interrupts();
+	55 01 10           OFFIW   VV:01,$10
+	55 01 22           OFFIW   VV:01,$22
+	goto 2EFE
+	70 1E 0F 99        SBCD    $990F
+	enable_interrupts();
+	return 0;
+2EFE:
+	enable_interrupts();
+	40 B9 32           CALL    $32B9
+	55 01 80           OFFIW   VV:01,$80
+	B |= 0x80;
+	91                 CALT    ($00A2)
+	return 0;
+
+2F0A:
+	59 13              BIT     1,VV:13
+	55 03 02           OFFIW   VV:03,$02
+	return 1;
+	5C 13              BIT     4,VV:13
+	goto 2F1A
+	40 67 30           CALL    $3067
+	40 B3 2F           CALL    $2FB3
+	goto 2F34
+2F1A:
+	45 0F C0           ONIW    VV:0F,$C0
+	55 01 30           OFFIW   VV:01,$30
+	return 1;
+	40 EC 32           CALL    $32EC
+	59 14              BIT     1,VV:14
+	55 13 02           OFFIW   VV:13,$02
+	return 1;
+	EA = 0x0000;
+	BC = [0x992B];
+	74 FD              DEQ     EA,BC
+	return 1;
+2F34:
+	5C 13              BIT     4,VV:13
+	55 4F 80           OFFIW   VV:4F,$80
+	goto 2F43
+	40 EC 32           CALL    $32EC
+	goto 2F52
+	55 01 04           OFFIW   VV:01,$04
+	goto 2F52
+	goto 2F4C
+2F43:
+	BC = [0x9A75];
+	EA = [0x03FF];
+	74 ED              DNE     EA,BC
 2F4C:
 	if (!sw_cn6())
 		goto 2F52;
-2F50: goto 2FAA
-2F52: BC = [0x9A75];
-2F56: 12                 INX     BC
-2F57: EA = [0x03FF];
-2F5A: 74 BD              DLT     EA,BC
-2F5C: 40 1B 21           CALL    $211B
-2F5F: BC = 0x0000;
-2F62: 40 10 22           CALL    $2210
-2F65: BC = 0x0000;
-2F68: 70 1E 75 9A        SBCD    $9A75
-2F6C: EA = 0x0000;
-2F6F: 74 ED              DNE     EA,BC
-2F71: return 1;
-2F72: 55 13 10           OFFIW   VV:13,$10
-2F75: return 1;
-2F76: EA = 0x0000;
-2F79: BC = [0x984B];
-2F7D: 5F 4F              BIT     7,VV:4F
-2F7F: 74 ED              DNE     EA,BC
-2F81: goto 2F96
-2F82: 5D 4F              BIT     5,VV:4F
-2F84: 55 14 01           OFFIW   VV:14,$01
-2F87: return 1;
-2F88: BC = [0x9A75];
-2F8C: EA = [0x03FF];
-2F8F: 74 FD              DEQ     EA,BC
-2F91: return 1;
-2F92: 40 C8 2F           CALL    $2FC8
-2F95: goto 2FAA
-2F96: BC = [0xC805];
-2F99: push(BC);
-2F9A: delay(C);
+	goto 2FAA
+2F52:
+	BC = [0x9A75];
+	12                 INX     BC
+	EA = 0x03FF;
+	74 BD              DLT     EA,BC
+	40 1B 21           CALL    $211B
+	BC = 0x0000;
+	40 10 22           CALL    $2210
+	BC = 0x0000;
+	70 1E 75 9A        SBCD    $9A75
+	EA = 0x0000;
+	74 ED              DNE     EA,BC
+	return 1;
+	55 13 10           OFFIW   VV:13,$10
+	return 1;
+	EA = 0x0000;
+	BC = [0x984B];
+	5F 4F              BIT     7,VV:4F
+	74 ED              DNE     EA,BC
+	goto 2F96
+	5D 4F              BIT     5,VV:4F
+	55 14 01           OFFIW   VV:14,$01
+	return 1;
+	BC = [0x9A75];
+	EA = 0x03FF;
+	74 FD              DEQ     EA,BC
+	return 1;
+	40 C8 2F           CALL    $2FC8
+	goto 2FAA
+2F96:
+	BC = 0xC805;
+2F99:
+	push(BC);
+	delay(C);
 	if (!sw_online())
 		goto 2FA8;
-2F9F: BC = pop();
-2FA0: 52                 DCR     B
-2FA1: goto 2F99
-2FA2: VV[0x13] |= 0x10
-2FA5: one_short_beep(); /* always returns 0 */
-2FA6: 88                 CALT    ($0090)
-2FA7: return 1;
-2FA8: BC = pop();
-2FA9: return 1;
-2FAA: VV[0x4F] &= 0x7F;
-2FAD: VV[0x13] &= 0xEF;
-2FB0: goto 32BF;
-2FB3: BC = [0x9A75];
-2FB7: EA = [0x03FF];
-2FBA: 74 FD              DEQ     EA,BC
-2FBC: return 0;
-2FBD: A = [0xC004];
-2FC1: 16 10              XRI     A,$10
-2FC3: [0xC004] = A;
-2FC7: return 0;
-2FC8: 40 B9 32           CALL    $32B9
+	BC = pop();
+	52                 DCR     B
+	goto 2F99
+	VV[0x13] |= 0x10
+	one_short_beep(); /* always returns 0 */
+	88                 CALT    ($0090)
+	return 1;
+2FA8:
+	BC = pop();
+	return 1;
+2FAA:
+	VV[0x4F] &= 0x7F;
+	VV[0x13] &= 0xEF;
+	goto 32BF;
+
+2FB3:
+	BC = [0x9A75];
+	EA = [0x03FF];
+	74 FD              DEQ     EA,BC
+	return 0;
+	A = [0xC004];
+	16 10              XRI     A,$10
+	[0xC004] = A;
+	return 0;
+
+2FC8:
+	40 B9 32           CALL    $32B9
 	if (!sw_cn6_debounced())
 		goto 2FCE;
-2FCD: return 0;
-2FCE: EA = [0x0268];
-2FD1: BC = [0x9849];
-2FD5: EA += BC;
-2FD7: BC = [0x9847];
-2FDB: EA -= BC;
-2FDD: BC = EA;
-2FDE: 91                 CALT    ($00A2)
-2FDF: 40 B9 32           CALL    $32B9
+	return 0;
+2FCE:
+	EA = 0x0268;
+	BC = [0x9849];
+	EA += BC;
+	BC = [0x9847];
+	EA -= BC;
+	BC = EA;
+	91                 CALT    ($00A2)
+	40 B9 32           CALL    $32B9
 	if (!sw_cn6_debounced())
 		goto 2FE5;
-2FE4: return 0;
-2FE5: VV[0x4F] |= 0x80
-2FE8: return 1;
-2FE9: 55 4F 80           OFFIW   VV:4F,$80
-2FEC: 40 1C 30           CALL    $301C
-2FEF: 5C 13              BIT     4,VV:13
-2FF1: return 0;
-2FF2: VV[0x13] &= 0xEF;
-2FF5: BC = 0x0000;
-2FF8: 70 1E 75 9A        SBCD    $9A75
-2FFC: A = [0xC004];
-3000: A |= 0x10;
-3002: [0xC004] = A;
-3006: 5B 13              BIT     3,VV:13
-3008: return 0;
-3009: VV[0x13] &= 0xF7;
-300C: 5D 4F              BIT     5,VV:4F
-300E: A = 0x24;
-3010: A = 0x0C;
-3012: C = A;
-3013: push(BC);
-3014: B = 0x80;
-3016: 91                 CALT    ($00A2)
-3017: BC = pop();
-3018: B = 0x00;
-301A: 91                 CALT    ($00A2)
-301B: return 0;
-301C: 5F 4F              BIT     7,VV:4F
-301E: return 0;
-301F: 40 D0 31           CALL    $31D0
-3022: EA = [0x028C];
-3025: BC = [0x9849];
-3029: EA += BC;
-302B: BC = [0x9847];
-302F: EA -= BC;
-3031: BC = EA;
-3032: B |= 0x80;
-3035: 91                 CALT    ($00A2)
-3036: VV[0x4F] &= 0x7F;
-3039: BC = [0x0024];
-303C: 91                 CALT    ($00A2)
-303D: 40 B9 32           CALL    $32B9
-3040: BC = 0x0000;
-3043: 70 1E 4B 98        SBCD    $984B
-3047: VV[0x14] &= 0xEF;
-304A: VV[0x13] |= 0x02
-304D: return 0;
-304E: 5C 14              BIT     4,VV:14
-3050: return 0;
-3051: VV[0x14] &= 0xEF;
-3054: 40 F3 32           CALL    $32F3
-3057: EA = [HL];
-3059: HL = [0x984B];
-305D: HL++;
-305E: 5D 4F              BIT     5,VV:4F
-3060: 74 BF              DLT     EA,HL
-3062: return 0;
-3063: A = 0x24;
-3065: goto 3012
-3067: VV[0x13] |= 0x01
+	return 0;
+2FE5:
+	VV[0x4F] |= 0x80
+	return 1;
+
+2FE9:
+	55 4F 80           OFFIW   VV:4F,$80
+	40 1C 30           CALL    $301C
+2FEF:
+	5C 13              BIT     4,VV:13
+	return 0;
+	VV[0x13] &= 0xEF;
+	BC = 0x0000;
+	70 1E 75 9A        SBCD    $9A75
+	A = [0xC004];
+	A |= 0x10;
+	[0xC004] = A;
+	5B 13              BIT     3,VV:13
+	return 0;
+	VV[0x13] &= 0xF7;
+	5D 4F              BIT     5,VV:4F
+	A = 0x24;
+	A = 0x0C;
+3012:
+	C = A;
+	push(BC);
+	B = 0x80;
+	91                 CALT    ($00A2)
+	BC = pop();
+	B = 0x00;
+	91                 CALT    ($00A2)
+	return 0;
+
+301C:
+	5F 4F              BIT     7,VV:4F
+	return 0;
+	40 D0 31           CALL    $31D0
+	EA = 0x028C;
+	BC = [0x9849];
+	EA += BC;
+	BC = [0x9847];
+	EA -= BC;
+	BC = EA;
+	B |= 0x80;
+	91                 CALT    ($00A2)
+	VV[0x4F] &= 0x7F;
+	BC = 0x0024;
+	91                 CALT    ($00A2)
+	40 B9 32           CALL    $32B9
+	BC = 0x0000;
+	70 1E 4B 98        SBCD    $984B
+	VV[0x14] &= 0xEF;
+	VV[0x13] |= 0x02
+	return 0;
+
+304E:
+	5C 14              BIT     4,VV:14
+	return 0;
+	VV[0x14] &= 0xEF;
+	40 F3 32           CALL    $32F3
+	EA = [HL];
+	HL = [0x984B];
+	HL++;
+	5D 4F              BIT     5,VV:4F
+	74 BF              DLT     EA,HL
+	return 0;
+	A = 0x24;
+	goto 3012
+
+3067:
+	VV[0x13] |= 0x01
 306A:
 	if (!sw_line_feed())
 		goto 3072;
-306E: 40 D1 30           CALL    $30D1
-3071: goto 3077
+	40 D1 30           CALL    $30D1
+	goto 3077
 3072:
 	if (!sw_form_feed())
 		return 0;
-3074: 40 9C 30           CALL    $309C
-3077: 40 B9 32           CALL    $32B9
-307A: 40 7E 30           CALL    $307E
-307D: goto 306A
-307E: 58 13              BIT     0,VV:13
-3080: return 0;
-3081: 40 B9 32           CALL    $32B9
-3084: BC = 0x8702;
-3087: push(BC);
-3088: 80                 CALT    ($0080)
-3089: A, B = read_stable_PA();
-308C: BC = pop();
-308D: A &= 0xc0;
-308F: 67 C0              NEI     A,$C0
-3091: goto 3098
-3092: 52                 DCR     B
-3093: goto 3087
-3094: VV[0x13] &= 0xFE;
-3097: return 0;
-3098: VV[0x13] |= 0x01
-309B: return 0;
-309C: EA = 0x0000;
-309F: HL = [0x984B];
-30A3: 74 FF              DEQ     EA,HL
-30A5: goto 30C2
-30A7: HL = [0x9847];
-30AB: 55 4F 20           OFFIW   VV:4F,$20
-30AE: HL = [0x9843];
-30B2: EA = [0x01B0];
-30B5: 74 FF              DEQ     EA,HL
-30B7: goto 30BC
-30B8: one_short_beep(); /* always returns 0 */
+	40 9C 30           CALL    $309C
+3077:
+	40 B9 32           CALL    $32B9
+	40 7E 30           CALL    $307E
+	goto 306A
+
+307E:
+	58 13              BIT     0,VV:13
+	return 0;
+	40 B9 32           CALL    $32B9
+	BC = 0x8702;
+3087:
+	push(BC);
+	80                 CALT    ($0080)
+	A, B = read_stable_PA();
+	BC = pop();
+	A &= 0xc0;
+	67 C0              NEI     A,$C0
+	goto 3098
+	52                 DCR     B
+	goto 3087
+	VV[0x13] &= 0xFE;
+	return 0;
+3098:
+	VV[0x13] |= 0x01
+	return 0;
+309C:
+	EA = 0x0000;
+	HL = [0x984B];
+	74 FF              DEQ     EA,HL
+	goto 30C2
+	HL = [0x9847];
+	55 4F 20           OFFIW   VV:4F,$20
+	HL = [0x9843];
+	EA = 0x01B0;
+	74 FF              DEQ     EA,HL
+	goto 30BC
+30B8:
+	one_short_beep(); /* always returns 0 */
 	if (!sw_form_feed())
 		return 0;
-30BB: goto 30B8
-30BC: 5D 4F              BIT     5,VV:4F
-30BE: goto 3120
-30C0: goto 3123
-30C2: HL = [0x9849];
-30C6: EA = [0x006C];
-30C9: 74 FF              DEQ     EA,HL
-30CB: goto 3126
-30CD: one_short_beep(); /* always returns 0 */
+	goto 30B8
+30BC:
+	5D 4F              BIT     5,VV:4F
+	goto 3120
+	goto 3123
+30C2:
+	HL = [0x9849];
+	EA = 0x006C;
+	74 FF              DEQ     EA,HL
+	goto 3126
+30CD:
+	one_short_beep(); /* always returns 0 */
 	if (!sw_form_feed())
 		return 0;
-30D0: goto 30CD
-30D1: EA = 0x0000;
-30D4: HL = [0x984B];
-30D8: 74 FF              DEQ     EA,HL
-30DA: goto 30F9
-30DC: HL = [0x9847];
-30E0: 55 4F 20           OFFIW   VV:4F,$20
-30E3: HL = [0x9843];
-30E7: EA = [0xFFFC];
-30EA: 74 FF              DEQ     EA,HL
-30EC: goto 30F3
-30ED: one_short_beep(); /* always returns 0 */
+	goto 30CD
+
+30D1:
+	EA = 0x0000;
+	HL = [0x984B];
+	74 FF              DEQ     EA,HL
+	goto 30F9
+	HL = [0x9847];
+	55 4F 20           OFFIW   VV:4F,$20
+	HL = [0x9843];
+	EA = 0xFFFC;
+	74 FF              DEQ     EA,HL
+	goto 30F3
+30ED:
+	one_short_beep(); /* always returns 0 */
 	if (!sw_line_feed())
 		return 0;
-30F2: goto 30ED
-30F3: 5D 4F              BIT     5,VV:4F
-30F5: goto 310A
-30F7: goto 310D
-30F9: HL = [0x9849];
-30FD: EA = [0xFF94];
-3100: 74 FF              DEQ     EA,HL
-3102: goto 3110
-3104: one_short_beep(); /* always returns 0 */
+	goto 30ED
+30F3:
+	5D 4F              BIT     5,VV:4F
+	goto 310A
+	goto 310D
+30F9:
+	HL = [0x9849];
+	EA = [0xFF94];
+	74 FF              DEQ     EA,HL
+	goto 3110
+3104:
+	one_short_beep(); /* always returns 0 */
 	if (!sw_line_feed())
 		return 0;
-3109: goto 3104
-310A: HL = 0x9847;
-310D: HL = 0x9843;
-3110: HL = 0x9849;
-3113: 5F 4F              BIT     7,VV:4F
-3115: VV[0x13] |= 0x08
-3118: EA = [HL];
-311A: EA--;
-311B: EA--;
-311C: BC = [0x8002];
-311F: goto 3130
-3120: HL = 0x9847;
-3123: HL = 0x9843;
-3126: HL = 0x9849;
-3129: EA = [HL];
-312B: EA++;
-312C: EA++;
-312D: BC = 0x0002;
-3130: [HL] = EA;
-3132: push(EA);
-3133: 91                 CALT    ($00A2)
-3134: EA = pop();
-3135: HL = 0x0000;
-3138: 74 FF              DEQ     EA,HL
-313A: return 0;
-313B: one_short_beep(); /* always returns 0 */
-313C:
+	goto 3104
+310A:
+	HL = 0x9847;
+310D:
+	HL = 0x9843;
+3110:
+	HL = 0x9849;
+	5F 4F              BIT     7,VV:4F
+	VV[0x13] |= 0x08
+	EA = [HL];
+	EA--;
+	EA--;
+	BC = 0x8002;
+	goto 3130
+3120:
+	HL = 0x9847;
+3123:
+	HL = 0x9843;
+3126:
+	HL = 0x9849;
+	EA = [HL];
+	EA++;
+	EA++;
+	BC = 0x0002;
+3130:
+	[HL] = EA;
+	push(EA);
+	91                 CALT    ($00A2)
+	EA = pop();
+	HL = 0x0000;
+	74 FF              DEQ     EA,HL
+	return 0;
+	one_short_beep(); /* always returns 0 */
 	wait_for_button(); /* always returns 0 */
 	return 0;
 
@@ -6668,29 +6789,32 @@ uint8_t func_7851(void)
 7874: goto 7874
 
 7875:
-DE = [9917];
-EA = 0x000a;
-if (DE <= EA)
-	return;
+	DE = [9917];
+	EA = 0x000a;
+	if (DE <= EA)
+		return;
 
-787F: HL = 000A;
-7882: HL = 010D;
-7885: HL = 00D1;
-7888: DE = [9917];
-788C: EA = HL;
-788D: 74 EE              DNE     EA,DE
-788F: 54 A4 7B           JMP     $func_7ba4
-7892: push(HL);
-7893: 93                 CALT    ($00A6)	func_7ba4();
-7894: HL = pop();
-7895: 5F 00              BIT     7,VV:00
-7897: A = 0x03;
-7899: A = 0x01;
-789B: VV[0x1F] = A;
-789D: push(HL);
-789E: DE = [9917];
-78A2: EA = HL;
-78A3: VV[0x00] &= 0xBF;
+	HL = 000A;
+7882:
+	HL = 010D;
+7885:
+	HL = 00D1;
+7888:
+	DE = [9917];
+	EA = HL;
+	74 EE              DNE     EA,DE
+	54 A4 7B           JMP     $func_7ba4
+	push(HL);
+	93                 CALT    ($00A6)	func_7ba4();
+	HL = pop();
+	5F 00              BIT     7,VV:00
+	A = 0x03;
+	A = 0x01;
+	VV[0x1F] = A;
+	push(HL);
+	DE = [9917];
+	EA = HL;
+	VV[0x00] &= 0xBF;
 	int borrow = (EA >= DE);
 	EA -= DE;
 	if (!borrow)
