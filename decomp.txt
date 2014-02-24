@@ -31,7 +31,7 @@
 0082: 1057 one_short_beep(); /* DONE */
 0084: 1325
 0086: 14ec
-0088: 00ca
+0088: 00ca EA = mul24(EA, A); /* DONE */
 008A: 170F
 008C: 16f7
 008E: 0feb
@@ -75,24 +75,24 @@ uint8_t bitmask(uint8_t A)
 	return A;
 }
 
-00CA:
-uint16_t func_00CA(uint16_t EA)
+/* 00CA */
+uint16_t mul24(uint16_t EA, uint8_t A)
 {
-	BC = EA;
-	EA = A * C;
-	push(EA);
-	EA = A * B;
-	BC = pop();
-	A = EAH;
-	if (A != 0x00) {
-		48 2B              STC     
-		return 0;
+	/* uses EA, BC, and A */
+	uint8_t h = in16 >> 8;
+	uint8_t l = in16 & 0xff;
+	uint16_t mh = (uint16_t) in8 * h;
+	uint16_t ml = (uint16_t) in8 * l;
+	uint16_t r = 0;
+	if (mh & 0xff00) {
+		/* check is wrong, we don't care */
+		carry = 1;
+	} else {
+		r =   mh;
+		r <<= 8;
+		r +=  ml;
 	}
-	A = EAL;
-	EA = 0x0000;
-	EAH = A;
-	EA += BC;
-	return 0;
+	return r; /* EA */
 }
 
 int skit(int interrupt)
@@ -290,9 +290,10 @@ void wait_for_ADC(uint8_t A)
 	goto 15CD;
 	goto 15C9;
 
-#
 /* always returns 0 */
-02CC:
+/* 02CC */
+void func_02CC(void)
+{
 	if (!sw_line_feed()) {
 		if (!sw_form_feed()) {
 			if (!sw_load_eject())
@@ -326,7 +327,7 @@ void wait_for_ADC(uint8_t A)
 	VV[0x03] |= 0x04;
 	one_short_beep(); /* always returns 0 */
 	return 0;
-#
+}
 
 /* always returns 0 */
 /* 0309 */
@@ -968,7 +969,7 @@ void func_07F7(void)
 	VV[0x05] &= 0xFE;
 	A = VV[0x15];
 	BC = [0x9808];
-	40 C9 22           CALL    $22C9
+	func_22C9(); /* always returns 0 */
 	HL = EA;
 	[0x993B] = HL;
 	HL = [0x9901];
@@ -2056,7 +2057,7 @@ void func_10A8(void)
 	DE = [0x9941];
 	EA = DE;
 	A = VV[0x22];
-	84                 CALT    ($0088)
+	EA = mul24(EA, A);
 	HL = 0x993B;
 	[HL] = EA;
 	HL = [0x9941];
@@ -2238,7 +2239,7 @@ void func_10A8(void)
 	HL = 0x9943;
 	EA = [HL];
 	A = VV[0x22];
-	84                 CALT    ($0088)
+	EA = mul24(EA, A);
 	HL = [0x9903];
 	EA += HL;
 	BC = EA;
@@ -2288,7 +2289,7 @@ void func_10A8(void)
 	[HL] = EA;
 	EA = BC;
 	A = VV[0x22];
-	84                 CALT    ($0088)
+	EA = mul24(EA, A);
 	BC = EA;
 	HL = 0x9901;
 	EA = [HL];
@@ -2795,7 +2796,7 @@ void func_10A8(void)
 
 1680:
 	BC = [0x9808];
-	40 C9 22           CALL    $22C9
+	func_22C9(); /* always returns 0 */
 	HL = EA;
 	return 0;
 	40 82 18           CALL    $1882
@@ -3042,7 +3043,7 @@ void func_10A8(void)
 1833: push(VA);
 1834: 97                 CALT    ($00AE)
 1835: VA = pop();
-1836: 84                 CALT    ($0088)
+1836: EA = mul24(EA, A);
 1837: BC = EA;
 1838: DE = [0x011F];
 183B: 74 AE              DGT     EA,DE
@@ -3075,7 +3076,7 @@ void func_10A8(void)
 186B: 8B                 CALT    ($0096)
 186C: 97                 CALT    ($00AE)
 186D: VA = pop();
-186E: 84                 CALT    ($0088)
+186E: EA = mul24(EA, A);
 186F: DE = [0x9901];
 1873: EA += DE;
 1875: DE = [0x993D];
@@ -3087,7 +3088,7 @@ void func_10A8(void)
 1883: push(EA);
 1884: 8E                 CALT    ($009C)
 1885: EA = pop();
-1886: 84                 CALT    ($0088)
+1886: EA = mul24(EA, A);
 1887: 48 1A              SKN     CY
 1889: return 0;
 188A: HL = EA;
@@ -3108,7 +3109,7 @@ void func_10A8(void)
 18A5: return 0;
 18A6: push(BC);
 18A7: EA = [HL];
-18A9: 84                 CALT    ($0088)
+18A9: EA = mul24(EA, A);
 18AA: BC = pop();
 18AB: 48 1A              SKN     CY
 18AD: return 0;
@@ -3138,7 +3139,7 @@ void func_10A8(void)
 18E7: goto 18EE
 18E8: 97                 CALT    ($00AE)
 18E9: A = 0x08;
-18EB: 84                 CALT    ($0088)
+18EB: EA = mul24(EA, A);
 18EC: BC = EA;
 18ED: goto 18CF
 18EE: VV[0x03] &= 0x7F;
@@ -3622,7 +3623,7 @@ void func_1AC2(void)
 	A = [HL];
 	EA = [HL + 1];
 	BC = EA;
-	40 C9 22           CALL    $22C9
+	func_22C9(); /* always returns 0 */
 	BC = EA;
 	DE = 0x9901;
 	EA = [DE];
@@ -3767,7 +3768,8 @@ void func_1AC2(void)
 	A = [HL];
 	EA = [HL + 1];
 	BC = EA;
-	goto 22C9
+	func_22C9(); /* always returns 0 */
+	return 0;
 
 1D3E:
 	40 21 1D           CALL    $1D21
@@ -3794,7 +3796,7 @@ void func_1AC2(void)
 1D6B:
 	A = VV[0x25];
 	EA = BC;
-	84                 CALT    ($0088)
+	EA = mul24(EA, A);
 	DE = [0x9835];
 	DE--;
 	[0x9835] = DE;
@@ -4376,7 +4378,7 @@ int func_211B(void)
 	VV[0x11] |= 0x08
 	VA = pop();
 	BC = EA;
-	40 C9 22           CALL    $22C9
+	func_22C9(); /* always returns 0 */
 	BC = pop();
 	EA += BC;
 	BC = pop();
@@ -4509,23 +4511,23 @@ int func_2272(void)
 	[0x9947] = HL;
 	return 0;
 
-22C9:
+/* always returns 0 */
+/* 22C9 */
+void func_22C9(void)
+{
 	push(BC);
 	func_22E6(); /* always returns 0 */
-	55 07 40           OFFIW   VV:07,$40
-	goto 22D8
-	74 5A 04           OFFI    B,$04
-	A = 0x06;
-	A = 0x0C;
-22D8:
-	A = 0x10;
-	84                 CALT    ($0088)
+	if      (VV[0x07] & 0x40) A = 0x10;
+	else if (B        & 0x04) A = 0x0c;
+	else                      A = 0x06;
+	EA = mul24(EA, A);
 	BC = pop();
 	if (B & 0x01)
 		return 0;
-	74 5B 08           OFFI    C,$08
-	EA <<= 1;
+	if (C & 0x08)
+		EA <<= 1;
 	return 0;
+}
 
 /* always returns 0 */
 void func_22E6(void)
