@@ -54,7 +54,7 @@
 00B0: 1B02
 00B2: 0050
 00B4: 242B { if (D > 0x97) D = 0x90; if (D < 0x90) D = 0x97; }
-00B6: 28F4
+00B6: 28F4 func_28F4(); /* DONE */
 00B8: 05A5 { memset(EA, 0x00, B*255+C); A = 0x00; } /* DONE */
 00BA: 216F
 00BC: 1334
@@ -2039,7 +2039,7 @@ void func_10A8(void)
 1155: HL = [0x9941];
 1159: EA = HL;
 115A: 55 12 08           OFFIW   VV:12,$08
-115D: 48 A4              DSLL    EA
+115D: EA <<= 1;
 115F: HL = EA;
 1160: EA = [0x1000];
 1163: EA -= HL;
@@ -2066,7 +2066,7 @@ void func_10A8(void)
 1194: EA = HL;
 1195: goto 1189
 1196: 55 12 08           OFFIW   VV:12,$08
-1199: 48 A4              DSLL    EA
+1199: EA <<= 1;
 119B: HL = 0x0000;
 119E: 74 EF              DNE     EA,HL
 11A0: return 0;
@@ -2199,7 +2199,7 @@ void func_10A8(void)
 12AF: HL = 0x9941;
 12B2: EA = [HL];
 12B4: 55 12 08           OFFIW   VV:12,$08
-12B7: 48 A4              DSLL    EA
+12B7: EA <<= 1;
 12B9: BC = EA;
 12BA: BC--;
 12BB: DE = [0x9913];
@@ -3326,9 +3326,9 @@ void func_10A8(void)
 1A7A: EA = pop();
 1A7B: EAL = A;
 1A7C: C = 0x07;
-1A7E: 48 A4              DSLL    EA
+1A7E: EA <<= 1;
 1A80: 48 35              RLL     A
-1A82: 48 A4              DSLL    EA
+1A82: EA <<= 1;
 1A84: 48 36              RLL     B
 1A86: 53                 DCR     C
 1A87: goto 1A7E
@@ -3355,7 +3355,7 @@ void func_10A8(void)
 1AA5: HL = 0x994D;
 1AA8: EA = [HL++];
 1AAA: goto 1AAD
-1AAB: 48 A4              DSLL    EA
+1AAB: EA <<= 1;
 1AAD: 52                 DCR     B
 1AAE: goto 1AAB
 1AAF: A = EAH;
@@ -3365,7 +3365,7 @@ void func_10A8(void)
 1AB3: BC = pop();
 1AB4: EA = [HL];
 1AB6: goto 1AB9
-1AB7: 48 A4              DSLL    EA
+1AB7: EA <<= 1;
 1AB9: 52                 DCR     B
 1ABA: goto 1AB7
 1ABB: A = EAH;
@@ -3513,7 +3513,7 @@ void func_1AC2(void)
 1BDB: 40 79 1D           CALL    $1D79
 1BDE: 48 1A              SKN     CY
 1BE0: goto 1C00
-1BE1: 48 A4              DSLL    EA
+1BE1: EA <<= 1;
 1BE3: BC = EA;
 1BE4: HL = [0x993D];
 1BE8: EA = HL;
@@ -3723,7 +3723,7 @@ void func_1AC2(void)
 1D90: A = CR1;
 1D92: EA = 0x0000;
 1D95: EAL = A;
-1D96: 48 A4              DSLL    EA
+1D96: EA <<= 1;
 1D98: 37 DB              LTI     A,$DB
 1D9A: goto 1DA2
 1D9B: EA += A;
@@ -3773,7 +3773,7 @@ void func_1AC2(void)
 1DEE: A = CR1;
 1DF0: EA = 0x0000;
 1DF3: EAL = A;
-1DF4: 48 A4              DSLL    EA
+1DF4: EA <<= 1;
 1DF6: 37 DB              LTI     A,$DB
 1DF8: goto 1E05
 1DF9: 27 D0              GTI     A,$D0
@@ -3934,7 +3934,7 @@ void func_1AC2(void)
 1F3C: 48 3D              DIV     A
 1F3E: EA = [0x0018];
 1F41: 77 00              EQI     A,$00
-1F43: 48 A4              DSLL    EA
+1F43: EA <<= 1;
 1F45: 70 61              ESUB    EA,A
 1F47: BC = EA;
 1F48: goto 1F57
@@ -4389,7 +4389,7 @@ int func_2272(void)
 	if (B & 0x01)
 		return 0;
 	74 5B 08           OFFI    C,$08
-	48 A4              DSLL    EA
+	EA <<= 1;
 	return 0;
 
 /* always returns 0 */
@@ -4470,10 +4470,10 @@ void func_2313(void)
 	VV[0x40] |= 0x80;
 2387:
 	func_22E6(); /* always returns 0 */
-	55 39 02           OFFIW   VV:39,$02
-	48 25              SLL     A
+	if (VV[0x39] & 0x02)
+		A <<= 1;
 	VV[0x3A] = A;
-	40 D0 24           CALL    $24D0
+	func_24D0(); /* always returns 0 */
 	HL = 0x9965;
 	func_2686(); /* always returns 0 */
 	func_25EF(); /* always returns 0 */
@@ -4577,52 +4577,54 @@ void func_242B(void)
 	return 0;
 }
 
-2436: 5C 40              BIT     4,VV:40
-2438: goto 243F;
-2439: BC = [0x9961];
-243D: goto 2482;
-243F: 58 39              BIT     0,VV:39
-2441: 55 10 50           OFFIW   VV:10,$50
-	VV[0x38] &= 0xef;
-2447: 58 39              BIT     0,VV:39
-2449: goto 2457;
-244A: BC = [0x9837];
-244E: A5                 DMOV    EA,BC
-244F: 55 39 02           OFFIW   VV:39,$02
-2452: 48 A4              DSLL    EA
-2454: BC = EA;
-2455: goto 2482;
-2457: 55 05 08           OFFIW   VV:05,$08
-245A: 77 20              EQI     A,$20
-245C: goto 2462;
-245D: 40 A0 24           CALL    $24A0
-2460: goto 2482;
-2462: 67 20              NEI     A,$20
-2464: goto 2472;
-2465: 5C 10              BIT     4,VV:10
-2467: goto 246B;
-2468: 5C 39              BIT     4,VV:39
-246A: goto 2472;
-246B: 55 10 40           OFFIW   VV:10,$40
-246E: 55 38 20           OFFIW   VV:38,$20
-2471: return 1;
-2472: func_22E6(); /* always returns 0 */
-2475: 55 39 02           OFFIW   VV:39,$02
-2478: 48 25              SLL     A
-247A: 55 38 08           OFFIW   VV:38,$08
-247D: 48 25              SLL     A
-247F: C = A;
-2480: B = 0x00;
+2436:
+	if (!(VV[0x40] & 0x10))
+		goto 243F;
+	BC = [0x9961];
+	goto 2482;
+243F:
+	if ((VV[0x39] & 0x01) || (VV[0x10] & 0x50))
+		VV[0x38] &= 0xef;
+	if (!(VV[0x39] & 0x01))
+		goto 2457;
+	BC = [0x9837];
+	EA = BC;
+	if (VV[0x39] & 0x02)
+		EA <<= 1;
+	BC = EA;
+	goto 2482;
+2457:
+	if (!(VV[0x05] & 0x08) || (A != ' '))
+		goto 2462;
+	if (!func_24A0())
+		goto 2482;
+2462:
+	if (A == ' ')
+		goto 2472;
+	5C 10              BIT     4,VV:10
+	goto 246B;
+	5C 39              BIT     4,VV:39
+	goto 2472;
+246B:
+	55 10 40           OFFIW   VV:10,$40
+	55 38 20           OFFIW   VV:38,$20
+	return 1;
+2472:
+	func_22E6(); /* always returns 0 */
+	55 39 02           OFFIW   VV:39,$02
+	48 25              SLL     A
+	55 38 08           OFFIW   VV:38,$08
+	48 25              SLL     A
+	C = A;
+	B = 0x00;
 2482:
-	74 7A 00           EQI     B,$00
-	goto 248B
-	VV[0x40] &= 0xEF;
-	A = C;
-	goto 2490
-248B:
-	VV[0x40] |= 0x10
-	A = 0xFF;
-2490:
+	if (B == 0x00) {
+		VV[0x40] &= 0xEF;
+		A = C;
+	} else {
+		VV[0x40] |= 0x10;
+		A = 0xFF;
+	}
 	60 33              SUBNB   C,A
 	52                 DCR     B
 	70 1E 61 99        SBCD    $9961
@@ -4638,35 +4640,34 @@ void func_2497(void)
 	return 0;
 }
 
-24A0: HL = 0x9937;
-24A3: EA = [HL];
-24A5: 5A 00              BIT     2,VV:00
-24A7: goto 24AC
-24A8: EA++;
-24A9: EA++;
-24AA: EA++;
-24AB: goto 24AF
-24AC: EA--;
-24AD: EA--;
-24AE: EA--;
-24AF: HL = [0x9945];
-24B3: 74 AF              DGT     EA,HL
-24B5: return 1;
-24B6: HL = 0x9953;
-24B9: EA = [HL];
-24BB: 5A 00              BIT     2,VV:00
-24BD: goto 24C7
-24BE: A = VV[0x35];
-24C0: 74 A8 36           GTAW    VV:36
-24C3: EA++;
-24C4: 30 35              DCRW    VV:35
-24C6: goto 24CE
-24C7: 65 36 00           NEIW    VV:36,$00
-24CA: goto 24CE
-24CB: EA++;
-24CC: 30 36              DCRW    VV:36
-24CE: BC = EA;
-24CF: return 0;
+24A0:
+	HL = 0x9937;
+	EA = [HL];
+	if (VV[0x00] & 0x04) {
+		EA += 3;
+	} else {
+		EA -= 3;
+	}
+	HL = [0x9945];
+	74 AF              DGT     EA,HL
+	return 1;
+	HL = 0x9953;
+	EA = [HL];
+	if (!(VV[0x00] & 0x04))
+		goto 24C7;
+	A = VV[0x35];
+	74 A8 36           GTAW    VV:36
+	EA++;
+	30 35              DCRW    VV:35
+	goto 24CE
+24C7:
+	if (VV[0x36] == 0x00)
+		goto 24CE;
+	EA++;
+	30 36              DCRW    VV:36
+24CE:
+	BC = EA;
+	return 0;
 
 24D0:
 	if (VV[0x38] & 0x02) {
@@ -4808,9 +4809,8 @@ void func_25C9(uint8_t A)
 /* always returns 0 */
 void func_25E2(EA)
 {
-	if (!(VV[0x07] & 0x40))
-		if (!(VV[0x38] & 0x80))
-			return;
+	if (!(VV[0x07] & 0x40) && !(VV[0x38] & 0x80))
+		return;
 	[C001] = EA;
 	return;
 }
@@ -4965,9 +4965,9 @@ void func_26DB(void)
 {
 	push(HL);
 	HL = [0x9963];
-	DE = 0xC001;
-	C = 0x02;
-	31                 BLOCK   
+	[C001] = [HL++];
+	[C002] = [HL++];
+	[C003] = [HL++];
 	HL = pop();
 	return;
 }
@@ -4997,7 +4997,7 @@ void func_26F8(void)
 		if (!(VV[0x38] & 0x02))
 			C = 0x02;
 		DE = 0xC001;
-		31                 BLOCK   
+		do { [DE++] = [HL++] } while (C--);
 	}
 	DE = EA;
 	C = VV[0x3b];
@@ -5081,38 +5081,99 @@ void func_27BC(void)
 }
 
 27C9:
-	if (VV[0x40] & 0x80 || VV[0x39] & 0x40 || !(VV[0x39] & 0x02) || VV[FLAGS_1] & 0x10 || !(VV[FLAGS_1] & 0x40))
-		goto 27DA;
-	goto 284F;
-27DA:
-	DE = 0x9965;
-	B = 0x00;
-	40 E8 27           CALL    $27E8
-	40 03 28           CALL    $2803
-	return 0;
-	VV[0x3B] = A;
-27E8:
-	goto 27FF
-27E9:
-	A = B;
-	A ^= 0xff;
-	A &= [HL++];
-	70 6B 00 C0        MOV     C,($C000)
-	74 5B 80           OFFI    C,$80
-	goto 27FF
-	B = A;
-	9B                 CALT    ($00B6)
-	59 39              BIT     1,VV:39
-	goto 27FF
-	A = 0x00;
-	B = A;
-	9B                 CALT    ($00B6)
-27FF:
-	30 3B              DCRW    VV:3B
-	goto 27E9
+	if (VV[0x40] & 0x80 || VV[0x39] & 0x40 || !(VV[0x39] & 0x02) || VV[FLAGS_1] & 0x10 || !(VV[FLAGS_1] & 0x40)) {
+		DE = 0x9965;
+		B = 0x00;
+		func_27E8(); /* always returns 0 */
+		if (!func_2803())
+			return 0;
+		VV[0x3B] = A;
+		func_27E8(); /* always returns 0 */
+		return 0;
+	}
+	DE = 0x99ED;
+	C = [0x983B];
+	if (C--) {
+		do {
+			[DE++] = [HL++]
+		} while (C--);
+	}
+	if (func_2803()) {
+		C = A;
+		A += VV[0x3B];
+		VV[0x3B] = A;
+		if (C--) {
+			do {
+				[DE++] = [HL++]
+			} while (C--);
+		}
+	}
+	HL = 0x99ED;
+	DE = [0x9965];
+	EA = 0x0000;
+	VV[0x3B]--; /* don't do first A = [HL++]; on overflow */
+	do {
+		A = [HL++];
+		B = A;
+		C = [C000];
+		if (!(C & 0x80)) {
+			while (1) {
+				do {
+					if (VV[0x3b] == 0x00) {
+						C = 0x00;
+						break;
+					}
+					A = [HL++];
+					C = [C000];
+					if (!(C & 0x80)) {
+						C = A;
+						break;
+					}
+				} while (VV[0x3b]--);
+				func_2958(); /* always returns 0 */
+				func_2909(); /* always returns 0 */
+				func_28F4(); /* always returns 0 */
+				EAH = A;
+				if (!VV[0x3b]--)
+					break;
+				func_2965(); /* always returns 0 */
+				func_2909(); /* always returns 0 */
+				func_28F4(); /* always returns 0 */
+				EAH = A;
+				A = B;
+				EAL = A;
+				A = C;
+				B = A;
+			}
+		}
+	} while (VV[0x3b]--);
 	return 0;
 
-2803:
+/* always returns 0 */
+/* 27E8 */
+void func_27E8(void)
+{
+	while (VV[0x3b]--) {
+		A = B;
+		A ^= 0xff;
+		A &= [HL++];
+		C = [C000];
+		if (C & 0x80)
+			continue;
+		B = A;
+		func_28F4(); /* always returns 0 */
+		if (!(VV[0x38] & 0x02))
+			continue;
+		A = 0x00;
+		B = A;
+		func_28F4(); /* always returns 0 */
+	}
+	return 0;
+}
+
+/* 2803 */
+int func_2803(void)
+{
 	if ((VV[0x07] & 0x40) || !(VV[0x39] & 0x04))
 		return 0;
 	A = 0x01;
@@ -5122,62 +5183,7 @@ void func_27BC(void)
 		return 0;
 	HL -= 3;
 	return 1;
-
-284F:
-	DE = 0x99ED;
-	C = [0x983B];
-	53                 DCR     C
-	31                 BLOCK   
-	40 03 28           CALL    $2803
-	goto 2864;
-	C = A;
-	A += VV[0x3B];
-	VV[0x3B] = A;
-	53                 DCR     C
-	31                 BLOCK   
-2864:
-	HL = 0x99ED;
-	DE = [0x9965];
-	EA = 0x0000;
-	30 3B              DCRW    VV:3B
-286F:
-	A = [HL++];
-	B = A;
-	70 6B 00 C0        MOV     C,($C000)
-	74 4B 80           ONI     C,$80
-	goto 2889
-	30 3B              DCRW    VV:3B
-	goto 286F
-	return 0;
-287D:
-	40 65 29           CALL    $2965
-	func_2909(); /* always returns 0 */
-	9B                 CALT    ($00B6)
-	EAH = A;
-	A = B;
-	EAL = A;
-	A = C;
-	B = A;
-2889:
-	do {
-		if (VV[0x3b] == 0x00) {
-			C = 0x00;
-			break;
-		}
-		A = [HL++];
-		C = [C000];
-		if (!(C & 0x80)) {
-			C = A;
-			break;
-		}
-	} while (VV[0x3b]--);
-	func_2958(); /* always returns 0 */
-	func_2909(); /* always returns 0 */
-	9B                 CALT    ($00B6)
-	EAH = A;
-	30 3B              DCRW    VV:3B
-	goto 287D
-	return 0;
+}
 
 /* always returns 0 */
 void func_28BC(void)
@@ -5202,49 +5208,48 @@ void func_28BF(void)
 	if (++A)
 		[0x9957] = BC;
 	EA = BC;
-28C5:
-	push(EA);
-	EA = [HL++];
-	push(EA);
-	EA |= BC;
-	if (!(VV[0x38] & 0x08))
-		goto 28E1;
-	BC = [0x9957];
-	push(BC);
-	BC = EA;
-	[0x9957] = BC;
-	BC = pop();
-	EA |= BC;
-	[DE++] = EA;
-	EA = 0x0000;
-	goto 28EC
-28E1:
-	push(EA);
-	BC = 0xFFFF;
-	EA = [HL];
-	EA ^= BC;
-	BC = pop();
-	EA &= BC;
-28EC:
-	[DE++] = EA;
-	EA = pop();
-	BC = pop();
-	51                 DCR     A
-	goto 28C5
+	do {
+		push(EA);
+		EA = [HL++];
+		push(EA);
+		EA |= BC;
+		if (VV[0x38] & 0x08) {
+			BC = [0x9957];
+			push(BC);
+			BC = EA;
+			[0x9957] = BC;
+			BC = pop();
+			EA |= BC;
+			[DE++] = EA;
+			EA = 0x0000;
+		} else {
+			push(EA);
+			BC = 0xFFFF;
+			EA = [HL];
+			EA ^= BC;
+			BC = pop();
+			EA &= BC;
+		}
+		[DE++] = EA;
+		EA = pop();
+		BC = pop();
+	} while (A--);
 	return 1;
 }
 
-28F4:
-	40 11 29           CALL    $2911
+/* 28F4 */
+void func_28F4(void)
+{
+	func_2911(); /* always returns 0 */
 	EA = 0x0000;
 	EAH = A;
-	55 40 02           OFFIW   VV:40,$02
-	48 A0              DSLR    EA
-	55 39 40           OFFIW   VV:39,$40
-	40 25 29           CALL    $2925
+	if (VV[0x40] & 0x02)
+		EA >>= 1;
+	if (VV[0x39] & 0x40)
+		func_2925(); /* always returns 0 */
 	[DE++] = EA;
 	return 0;
-
+}
 /* always returns 0 */
 /* 2909 */
 void func_2909(void)
@@ -5256,25 +5261,28 @@ void func_2909(void)
 	return 0;
 }
 
-2911:
-	55 10 10           OFFIW   VV:10,$10
-	5C 39              BIT     4,VV:39
+/* always returns 0 */
+/* 2911 */
+void func_2911(void)
+{
+	if (VV[0x10] & 0x10 || !(VV[0x39] & 0x10))
+		return 0;
+	if (VV[0x40] & 0x80) {
+		A &= 0x0F;
+		return 0;
+	}
+	if (!(A & 0x01)) A = 0x00;
+	else             A = 0x0F;
 	return 0;
-	55 40 80           OFFIW   VV:40,$80
-	goto 2922
-	47 01              ONI     A,$01
-	A = 0x00;
-	A = 0x0F;
-	return 0;
-2922:
-	A &= 0x0f;
-	return 0;
-
-2925:
+}
+/* always returns 0 */
+/* 2925 */
+void func_2925(void)
+{
 	push(BC);
 	C = 0x00;
-	55 10 40           OFFIW   VV:10,$40
-	48 A4              DSLL    EA
+	if (VV[0x10] & 0x40)
+		EA <<= 1;
 	A = EAH;
 	if (A & 0x80) C |= 0x80;
 	if (A & 0x20) C |= 0x40;
@@ -5288,11 +5296,11 @@ void func_2909(void)
 	EA = 0x0000;
 	A = C;
 	EAH = A;
-	5D 39              BIT     5,VV:39
-	EA >>= 4;
+	if (!(VV[0x39] & 0x20))
+		EA >>= 4;
 	BC = pop();
 	return 0;
-
+}
 /* always returns 0 */
 /* 2958 */
 void func_2958(void)
@@ -5307,30 +5315,34 @@ void func_2958(void)
 	return 0;
 }
 
-2965: push(DE);
-2966: push(HL);
-2967: A = B;
-2968: func_29B8(); /* always returns 0 */
-296B: D = A
-296C: A = C;
-296D: A &= 0x7f;
-296F: A = [HL+A];
-2970: 74 4B 80           ONI     C,$80
-2973: A &= 0x7f;
-2975: D |= A;
-2977: 74 14 FF           XRI     D,$FF
-297A: A = B;
-297B: 48 25              SLL     A
-297D: A &= C;
-297F: 1E                 MOV     H,A
-2980: A = C;
-2981: 48 25              SLL     A
-2983: A &= B;
-2985: 60 9E              ORA     A,H
-2987: A &= D;
-2989: HL = pop();
-298A: DE = pop();
-298B: return 0;
+/* 2965 */
+void func_2965(void)
+{
+	push(DE);
+	push(HL);
+	A = B;
+	func_29B8(); /* always returns 0 */
+	D = A;
+	A = C;
+	A &= 0x7f;
+	A = [HL+A];
+	if (!(C & 0x80))
+		A &= 0x7f;
+	D |= A;
+	D ^= 0xff;
+	A = B;
+	A <<= 1;
+	A &= C;
+	H = A;
+	A = C;
+	A <<= 1;
+	A &= B;
+	A |= H;
+	A &= D;
+	HL = pop();
+	DE = pop();
+	return 0;
+}
 
 /* always returns 0 */
 void func_298C(void)
@@ -6807,11 +6819,11 @@ func_7bb1();
 79CB: VV[0x00] |= 0x20
 79CE: HL = 0x9949;
 79D1: EA = [HL];
-79D3: 48 A4              DSLL    EA
+79D3: EA <<= 1;
 79D5: [HL] = EA;
 79D7: HL = 0x994B;
 79DA: EA = [HL];
-79DC: 48 A4              DSLL    EA
+79DC: EA <<= 1;
 79DE: [HL] = EA;
 79E0: A = 0x1C;
 79E2: A = 0x0E;
