@@ -3505,7 +3505,7 @@ void func_1AC2(void)
 	VV[0x06] |= 0x10; /* 0001 0000 */
 1B1F:
 	func_304E(); /* always returns 0 */
-	40 AE 1F           CALL    $1FAE
+	func_1FAE(); /* always returns 0 */
 	40 BC 1B           CALL    $1BBC
 	VV[FLAGS_1] &= 0xAF; /* 1010 1111 */
 	VV[FLAGS_1] |= 0x01; /* 0000 0001 */
@@ -3576,21 +3576,19 @@ void func_1AC2(void)
 1BBC:
 	VV[0x05] &= 0xF7;
 	VV[0x11] &= 0xFE;
-	55 05 30           OFFIW   VV:05,$30
-	goto 1C75
-	5F 05              BIT     7,VV:05
-	return 0;
-	55 05 02           OFFIW   VV:05,$02
-	return 0;
-	5B 03              BIT     3,VV:03
-	if (VV[0x33] == 0x00)
+	if (VV[0x05] & 0x30)
+		goto 1C75;
+	if (!(VV[0x05] & 0x80))
+		return 0;
+	if (VV[0x05] & 0x02)
+		return 0;
+	if ((VV[0x03] & 0x04) || (VV[0x33] == 0x00))
 		return 0;
 	VV[0x05] &= 0xBF;
-	55 11 04           OFFIW   VV:11,$04
-	goto 1BF9
-	40 79 1D           CALL    $1D79
-	48 1A              SKN     CY
-	goto 1C00
+	if (VV[0x11] & 0x04)
+		goto 1BF9;
+	if (!func_1D79())
+		goto 1C00;
 	EA <<= 1;
 	BC = EA;
 	HL = [0x993D];
@@ -3604,11 +3602,11 @@ void func_1AC2(void)
 	return 0;
 	VV[0x05] |= 0x40
 1BF9:
-	40 2A 1C           CALL    $1C2A
+	func_1C2A(); /* always returns 0 */
 	if (VV[0x33] == 0x00)
 		return 0;
 1C00:
-	40 79 1D           CALL    $1D79
+	func_1D79(); /* always returns 0 */
 	HL = [0x9947];
 	EA += HL;
 	A = VV[0x25];
@@ -3627,36 +3625,37 @@ void func_1AC2(void)
 	VV[0x34] = A;
 	VV[0x05] |= 0x08
 	return 0;
-1C2A:
+
+/* always returns 0 */
+/* 1C2A */
+void func_1C2A(void)
+{
 	HL = [0x9939];
 	[0x9951] = HL;
-1C32:
-	HL -= 3;
-	A = [HL];
-	EA = [HL + 1];
-	BC = EA;
-	func_22C9(); /* always returns 0 */
-	BC = EA;
-	DE = 0x9901;
-	EA = [DE];
-	EA -= BC;
-	[DE] = EA;
-	A = [HL];
-	67 20              NEI     A,$20
-	goto 1C54
-	55 05 40           OFFIW   VV:05,$40
-	goto 1C64
-	VV[0x11] |= 0x01
-	goto 1C32
-1C54:
-	VV[0x05] |= 0x40
-	DE = 0x9947;
-	EA = [DE];
-	EA -= BC;
-	[DE] = EA;
-	if (VV[0x33]--)
-		goto 1C32;
-1C64:
+	do {
+		HL -= 3;
+		A = [HL];
+		EA = [HL + 1];
+		BC = EA;
+		func_22C9(); /* always returns 0 */
+		BC = EA;
+		DE = 0x9901;
+		EA = [DE];
+		EA -= BC;
+		[DE] = EA;
+		A = [HL];
+		if (A == 0x20) {
+			VV[0x05] |= 0x40;
+			DE = 0x9947;
+			EA = [DE];
+			EA -= BC;
+			[DE] = EA;
+		} else {
+			if (VV[0x05] & 0x40)
+				break;
+			VV[0x11] |= 0x01;
+		}
+	} while (VV[0x33]--);
 	HL += 3;
 	[0x9939] = HL;
 	DE = 0x9901;
@@ -3664,11 +3663,12 @@ void func_1AC2(void)
 	EA += BC;
 	[DE] = EA;
 	return 0;
+}
 
 1C75:
 	5A 05              BIT     2,VV:05
 	return 0;
-	40 79 1D           CALL    $1D79
+	func_1D79(); /* always returns 0 */
 	5D 05              BIT     5,VV:05
 	48 A0              DSLR    EA
 	DE = EA;
@@ -3842,7 +3842,6 @@ void func_1D65(void)
 	BC++;
 	return 0;
 }
-
 /* always returns 0 */
 /* 1D6B */
 void func_1D6B(void)
@@ -3855,13 +3854,18 @@ void func_1D6B(void)
 	[0x9835] = DE;
 	return 0;
 }
-
-1D79:
+/* always returns 0 */
+/* 1D79 */
+int func_1D79(void)
+{
+	int r;
 	HL = [0x993D];
 	EA = HL;
 	HL = [0x9901];
+	r = (EA < HL);
 	EA -= HL;
-	return 0;
+	return r;
+}
 
 1D85:
 	HL = [0x9925];
@@ -4170,22 +4174,21 @@ int func_1F9F(void)
 	return 1;
 }
 
-1FAE:
-	55 06 10           OFFIW   VV:06,$10
-	goto 1FEA;
-	59 09              BIT     1,VV:09
-	55 09 04           OFFIW   VV:09,$04
-	goto 1FC9;
-	55 07 40           OFFIW   VV:07,$40
-	goto 1FCC;
-	if (VV[0x07] & 0x20) HL = 0x200b;
-	if (VV[0x08] & 0x04) HL = 0x200b;
-	HL = 0x2007;
-1FC9:
-	HL = 0x200f;
-1FCC:
-	HL = 0x2013;
-1FCF:
+/* always returns 0 */
+/* 1FAE */
+void func_1FAE(void)
+{
+	if (VV[0x06] & 0x10) {
+		if ((VV[0x09] & 0x02) || (VV[0x09] & 0x04))      HL = 0x201f;
+		else if (VV[0x07] & 0x40)                        HL = 0x2013;
+		else if ((VV[0x07] & 0x20) || (VV[0x08] & 0x04)) HL = 0x2017;
+		else                                             HL = 0x201b;
+	}
+	else if ((VV[0x09] & 0x02) || VV[0x09] & 0x04)   HL = 0x200f;
+	else if (VV[0x07] & 0x40)                        HL = 0x2013;
+	else if ((VV[0x07] & 0x20) || (VV[0x08] & 0x04)) HL = 0x200b;
+	else                                             HL = 0x2007;
+
 	A = [HL++];
 
 	push(VA);
@@ -4200,21 +4203,8 @@ int func_1F9F(void)
 	if (A & 0x80) HL = 0xc006;
 	else          HL = 0xc005;
 	A = [HL];
-	return;
-
-1FEA:
-	59 09              BIT     1,VV:09
-	55 09 04           OFFIW   VV:09,$04
-	goto 2001;
-	55 07 40           OFFIW   VV:07,$40
-	goto 1FCC;
-	5D 07              BIT     5,VV:07
-	55 08 04           OFFIW   VV:08,$04
-	HL = 0x2017;
-	HL = 0x201b;
-2001:
-	HL = 0x201f;
-	54 CF 1F           JMP     1FCF
+	return 0;
+}
 
 2007: DW: 80 0C B0 02
 200B: DW: 01 0C 60 05
