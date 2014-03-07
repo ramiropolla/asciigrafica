@@ -9,13 +9,13 @@
 #define CHECKSUM_93c06    0x56
 
 0000: goto _start;                     /* reset */
-0004: goto _irq0; /* IRQ 0 == NMI */
-0008: 11                 EXX           /* IRQ 1 */
-0009: 10                 EXA     
-000A: goto 9817; /* INTFT0, INTFT1 */
+0004: goto _irq0;                      /* IRQ 0 */ /* INTNMI */
+0008: exx();                           /* IRQ 1 */ /* INTFT0, INTFT1 */
+0009: exa();
+000A: goto 9817;
 0010: 00                 NOP           /* IRQ 2 */
-0018: 11                 EXX           /* IRQ 3 */
-0019: 10                 EXA     
+0018: exx();                           /* IRQ 3 */
+0019: exa();
 001A: goto 981A;
 0020: 00                 NOP           /* IRQ 4 */
 0028: goto 20CE; /* IRQ 5 */
@@ -105,7 +105,7 @@ int skit(int interrupt)
 
 _start:
 	V     = 0xff;
-	SP    = 0x0000;
+	SP    = 0x0000; /* set stack pointer to internal ram */
 	MM    = 0x0f; /* 64k EPROM | Internal RAM Access */
 	PORTA = b00111000;
 	MA    = b11000111; /* 0 = output; 1 = input */
@@ -142,15 +142,15 @@ _start:
 	reset_ram(0x00);
 
 	[9841] = 0x01;
-	SP = 0xa000; /* set stack pointer now that we know the ram is ok */
+	SP  = 0xa000; /* set stack pointer now that we know the ram is ok */
 	VV  = 0x98xx;
 	VV' = 0x98xx;
 	clear_interrupt(F2); /* ONLINE BUTTON */
 	EI(); /* enable interrupts */
 	read_dipsw_to_ram();
+	/* 0165 */
 	MB  = b11111101; /* 0 = output; 1 = input */ /* 93c06.DI = input */
 	read_all_93c06(); /* always returns 0 */
-	A = 0x54;
 	[9817] = 0x54; /* JMP instruction */
 	[981a] = 0x54; /* JMP instruction */
 	func_0BF7(); /* always returns 0 */
@@ -162,6 +162,7 @@ _start:
 	VV[0x4f] &= 0xf7;
 	VV[0x4f] |= 0x40;
 	40 B1 77           CALL    $77B1
+	/* DEBUG DOESN'T REACH HERE */
 	func_2AFA(); /* always returns 0 */
 	func_19A0(); /* always returns 0 */
 0195:
@@ -239,31 +240,27 @@ void wait_for_ADC(uint8_t A)
 	}
 	if (!(A & 0x02))
 		VV[0x04] |= 0x40;
-	47 08              ONI     A,$08
-	goto 024E
-	if (A & 0x04) HL = 0x0948;
-	else          HL = 0x0A20;
-	goto 0256;
-024E:
-	if (A & 0x04) HL = 0x072C;
-	else          HL = 0x09D8;
-0256:
+	if (!(A & 0x08)) {
+		if (A & 0x04) HL = 0x072C;
+		else          HL = 0x09D8;
+	} else {
+		if (A & 0x04) HL = 0x0948;
+		else          HL = 0x0A20;
+	}
 	[0x992D] = HL;
 	[0x9931] = HL;
-	57 10              OFFI    A,$10
-	goto 0277
-	VV[0x04] |= 0x30;
-	if (A & 0x80) VV[0x04] |= 0x01;
-	if (A & 0x40) VV[0x04] |= 0x02;
-	if (A & 0x20) VV[0x04] |= 0x04;
-	VV[0x0C] = 0x00;
-	goto 0289
-0277:
-	VV[0x04] &= 0xf8;
-	if (A & 0x80) VV[0x0c] |= 0x01;
-	if (A & 0x40) VV[0x0c] |= 0x02;
-	if (A & 0x20) VV[0x0c] |= 0x04;
-0289:
+	if (A & 0x10) {
+		VV[0x04] &= 0xf8;
+		if (A & 0x80) VV[0x0c] |= 0x01;
+		if (A & 0x40) VV[0x0c] |= 0x02;
+		if (A & 0x20) VV[0x0c] |= 0x04;
+	} else {
+		VV[0x04] |= 0x30;
+		if (A & 0x80) VV[0x04] |= 0x01;
+		if (A & 0x40) VV[0x04] |= 0x02;
+		if (A & 0x20) VV[0x04] |= 0x04;
+		VV[0x0C] = 0x00;
+	}
 	A = VV[DIPSW2];
 	if (!(A & 0x01)) VV[0x14] |= 0x01;
 	VV[0x02] &= 0xdf;
@@ -275,10 +272,9 @@ void wait_for_ADC(uint8_t A)
 	HL = EA;
 	[0x992F] = HL;
 	if (!(A & 0x08))	VV[0x02] |= 0x80;
-	57 10              OFFI    A,$10
-	VV[0x02] |= 0x0c;
-	A = 0x10;
-	[0x9806] = A;
+	if (A & 0x10)
+		VV[0x02] |= 0x0c;
+	[0x9806] = 0x10;
 	55 4F 04           OFFIW   VV:4F,$04
 	40 F8 14           CALL    $14F8
 	40 2B 15           CALL    $152B
@@ -676,8 +672,8 @@ void reset_ram(uint8_t c)
 {
 	uint8_t last;
 	memset(0x9800, c, 0x2000);
-	A = [0xb800];
-	if (A != C) {
+	A = [0xb7ff];
+	if (A != C) { /* C is 0xff */
 		func_0C48(); /* always returns 0 */
 		beep_x_y(4, 2, 0); /* 1044 */
 		while(1); /* HANG */
@@ -824,22 +820,22 @@ void reset_ram(uint8_t c)
 	VV[0x06] |= 0x10; /* 0001 0000 */
 	return;
 
-06D8: 10                 EXA     
-06D9: 10                 EXA     
-06DA: 10                 EXA     
-06DB: 10                 EXA     
-06DC: 10                 EXA     
-06DD: 10                 EXA     
-06DE: 10                 EXA     
-06DF: 10                 EXA     
-06E0: 10                 EXA     
-06E1: 10                 EXA     
-06E2: 10                 EXA     
-06E3: 10                 EXA     
+06D8: exa();
+06D9: exa();
+06DA: exa();
+06DB: exa();
+06DC: exa();
+06DD: exa();
+06DE: exa();
+06DF: exa();
+06E0: exa();
+06E1: exa();
+06E2: exa();
+06E3: exa();
 06E4: 00                 NOP     
 06E5: 00                 NOP     
 06E6: 00                 NOP     
-06E7: 10                 EXA     
+06E7: exa();
 06E8: A = EAH;
 06E9: A = EAH;
 06EA: EAH = A;
@@ -869,7 +865,7 @@ void reset_ram(uint8_t c)
 0702: EAH = A;
 0703: EAH = A;
 0704: EAH = A;
-0705: 10                 EXA     
+0705: exa();
 0706: EAH = A;
 0707: A = EAH;
 
@@ -1260,20 +1256,24 @@ void func_0BF7(void)
 	             /* ff input clock source: upcounter 0 equals tm0 */
 	             /* timer0: internal clock /12, count up */
 	             /* timer1: upcounter0 = tm0, reset to 0 and stop counting */
-	IRR &= ~INTFT1; /* clear FT1 interrupt flag */
+	clear_interrupt(FT1); /* clear FT1 interrupt flag */
 	TM1  = 0x26;
-	[9818] = 0x0c0f;
+	[0x9818] = timer1_0;
 	TMM &= 0x3f; /* 0011 1111 */
 	             /* timer1: count up, internal clock / 384 */
 	MKL &= 0xfb; /* 1111 1011 */ /* activate INTT1 */
 	return 0;
 }
 
-0C0F: check_voltage(); /* either returns 0 or resets */
-0C12: 11                 EXX     
-0C13: 10                 EXA     
-0C14: enable_interrupts();
-0C15: return; /* FROM INTERRUPT */
+/* 0C0F */
+void __attribute__((interrupt)) timer1_0(void)
+{
+	check_voltage(); /* either returns 0 or resets */
+	exx();
+	exa();
+	enable_interrupts();
+	return; /* FROM INTERRUPT */
+}
 
 /* either returns 0 or resets */
 /* 0C16 */
@@ -2306,7 +2306,7 @@ void func_10A8(void)
 1317: push(VA);
 1318: SP++;
 1319: A = VV[0x12];
-131B: 10                 EXA     
+131B: exa();
 131C: A = EAH;
 131D: A = VV[0x14];
 131F: goto 1315
@@ -2471,7 +2471,7 @@ void func_1377(void)
 1426: DE = EA;
 1427: BC = 0x14B6;
 142A: push(BC);
-142B: 10                 EXA     
+142B: exa();
 142C: goto 1446
 142D: A ^= 0x37;
 142F: A |= 0xC9;
@@ -2484,10 +2484,10 @@ void func_1377(void)
 143E: BC = EA;
 143F: BC = [0x1754];
 1442: goto 1451
-1443: 10                 EXA     
+1443: exa();
 1444: goto 1456
-1445: 10                 EXA     
-1446: 10                 EXA     
+1445: exa();
+1446: exa();
 1447: VV[0xA1] |= 0x17
 144A: DE = EA;
 144B: A |= 0x14;
@@ -2501,7 +2501,7 @@ void func_1377(void)
 145C: DE = EA;
 145D: BC = 0x10D4;
 1460: goto 1478
-1461: 10                 EXA     
+1461: exa();
 1462: EAL = A;
 1463: 5D 17              BIT     5,VV:17
 1465: 20 B5              INRW    VV:B5
@@ -2513,14 +2513,14 @@ void func_1377(void)
 1473: EAL = A;
 1474: 2A                 LDAX    (DE)
 1475: goto 1490
-1476: 10                 EXA     
+1476: exa();
 1477: A = [HL++];
 1478: goto 148A
 1479: VV[0x2F] |= 0xBF
 147C: A |= 0x5C;
 147E: push(EA);
 147F: BC = [0xE45E];
-1482: 10                 EXA     
+1482: exa();
 1483: 61                 DAA     
 1484: A = D;
 1485: A ^= 0x62;
@@ -3905,8 +3905,8 @@ int func_1D79(void)
 	VV[FLAGS_1] &= 0xDF; /* 1101 1111 */
 
 1DCC:
-	11                 EXX     
-	10                 EXA     
+	exx();
+	exa();
 	enable_interrupts();
 	push(EA);
 	push(HL);
@@ -3964,8 +3964,8 @@ int func_1D79(void)
 	VV[FLAGS_1] &= 0xDF; /* 1101 1111 */
 
 1E2F:
-	11                 EXX     
-	10                 EXA     
+	exx();
+	exa();
 	enable_interrupts();
 	push(EA);
 	push(HL);
@@ -3987,10 +3987,8 @@ int func_1D79(void)
 	48 45              SKIT    FE0
 	00                 NOP     
 	MKL &= 0xdf; /* 1101 1111 */ /* activate INTE0 */
-	HL = 0x1E78;
-	[0x981B] = HL;
-	HL = 0x7A04;
-	[0x9818] = HL;
+	[0x981B] = 0x1E78;
+	[0x9818] = timer1_2;
 	return 0;
 1E5E:
 	55 10 02           OFFIW   VV:10,$02
@@ -4017,8 +4015,8 @@ int func_1D79(void)
 	[0xC005] = HL;
 	VV[FLAGS_1] &= 0x7D; /* 0111 1101 */
 	VV[0x0F] &= 0xFD;
-	11                 EXX     
-	10                 EXA     
+	exx();
+	exa();
 	enable_interrupts();
 	return; /* FROM INTERRUPT */
 
@@ -4033,16 +4031,12 @@ int func_1D79(void)
 	ETM0 = EA;
 	55 06 10           OFFIW   VV:06,$10
 	goto 1EB3
-	HL = 0x1D85;
-	[0x981B] = HL;
-	HL = 0x7A5A;
-	[0x9818] = HL;
+	[0x981B] = 0x1D85;
+	[0x9818] = timer1_1;
 	goto 1EC1
 1EB3:
-	HL = 0x1DE3;
-	[0x981B] = HL;
-	HL = 0x7A5A;
-	[0x9818] = HL;
+	[0x981B] = 0x1DE3;
+	[0x9818] = timer1_1;
 1EC1:
 	ETMM = 0x0c; /* 0000 1100 */ /*  */
 	VV[FLAGS_1] |= 0x20; /* 0010 0000 */
@@ -6678,8 +6672,8 @@ int func_31D8(void)
 }
 
 31F5:
-	11                 EXX     
-	10                 EXA     
+	exx();
+	exa();
 	push(EA);
 	push(VA);
 	push(BC);
@@ -6880,19 +6874,20 @@ void func_32F3(void)
 	stepper_vref(0x06);
 	VV[0x1d] = 0x03;
 	delay(25);
-77E8:
-	func_7845(); /* always returns 0 */
-	30 1D              DCRW    VV:1D
-	goto 77E8;
+	do {
+		func_7845(); /* always returns 0 */
+	} while (VV[0x1d]--);
 	stepper_vref(0x07);
 	delay(75);
 	VV[0x00] |= 0x80;
+/* 77F7: */
 	if (!sw_cn7_debounced()) {
 		[0x9917] = 0x03E3;
 		func_7875(); /* always returns 0 */
 	}
+/* 7806: */
 	[0x9917] = 0x0000;
-	func_7888(0x010D); /* always returns 0 */
+	func_7888(0x010D); /* always returns 0 */ /* DEBUG HANGS HERE */
 	VV[0x00] &= 0x7f;
 	[0x991D] = 0x7B76;
 	stepper_vref(0x06);
@@ -6930,7 +6925,9 @@ void func_7845(void)
 	return 0;
 }
 
-uint8_t func_7851(void)
+/* sets A */
+/* 7851 */
+int func_7851(void)
 {
 	A = [C008];
 	HL = 0x7860;
@@ -7139,12 +7136,10 @@ void func_798D(void)
 		[HL] <<= 1;
 		A = 0x1C;
 	}
-	A = 0x0E;
-	VV[0x1D] = A;
+	VV[0x1D] = 0x0E;
 	stepper_vref(0x05);
-	64 9D E0           ORI     TMM,$E0
-	HL = 0x7A04;
-	[0x9818] = HL;
+	TMM |= 0xe0; /* 1110 0000 */
+	[0x9818] = timer1_2;
 	VV[0x0F] |= 0x01
 	A = 0xE6;
 	TM1 = A;
@@ -7153,95 +7148,91 @@ void func_798D(void)
 	MKL &= 0xfb; /* 1111 1011 */ /* activate INTT1 */
 	return 0;
 }
-
-7A04:
+/* 7A04 */
+void __attribute__((interrupt)) timer1_2(void)
+{
 	EA = ECNT;
 	HL = EA;
 	[0x9921] = HL;
-	40 34 7A           CALL    $7A34
-	goto 7A16;
+	if (!func_7A34()) {
+		func_7B4D(); /* always returns 0 */
+		exx();
+		exa();
+		enable_interrupts();
+		push(VA);
+		push(EA);
+		push(BC);
+		push(DE);
+		push(HL);
+		A = VV[0x1D];
+		HL = [991F];
+		A = [HL+A];
+		TM1 = A;
+		40 C4 7A           CALL    $7AC4
+		40 99 7A           CALL    $7A99
+		HL = pop();
+		DE = pop();
+		BC = pop();
+		EA = pop();
+		VA = pop();
+		return; /* FROM INTERRUPT */
+	}
 	check_voltage(); /* either returns 0 or resets */
-	11                 EXX     
-	10                 EXA     
+	exx();
+	exa();
 	enable_interrupts();
 	return; /* FROM INTERRUPT */
-
-7A16:
-	func_7B4D(); /* always returns 0 */
-	11                 EXX     
-	10                 EXA     
-	enable_interrupts();
-	push(VA);
-	push(EA);
-	push(BC);
-	push(DE);
-	push(HL);
-	A = VV[0x1D];
-	HL = [991F];
-	A = [HL+A];
-	TM1 = A;
-	40 C4 7A           CALL    $7AC4
-	40 99 7A           CALL    $7A99
-	HL = pop();
-	DE = pop();
-	BC = pop();
-	EA = pop();
-	VA = pop();
-	return; /* FROM INTERRUPT */
-
-7A34:
+}
+/* 7A34 */
+int func_7A34(void)
+{
 	if (!(VV[0x0f] & 0x41))
 		return 0;
-	if (!(VV[0x0f] & 0x01))
-		goto 7A50
+	if (!(VV[0x0f] & 0x01)) {
+		if (VV[0x1e]--) {
+			VV[0x0f] &= 0xbf;
+			func_0BF7(); /* always returns 0 */
+		}
+		return 1;
+	}
 	VV[0x0f] &= 0xfe;
-	5E 0F              BIT     6,VV:0F
-	goto 7A4C
+	if (!(VV[0x0f] & 0x40)) {
+		stepper_vref(0x06);
+		return 0;
+	}
 	stepper_vref(0x07);
-	A = 0xc0;
-	TM1 = A;
+	TM1 = 0xc0;
 	VV[0x1e] = 0x0e;
 	return 1;
-7A4C:
-	stepper_vref(0x06);
-	return 0;
-7A50:
-	30 1E              DCRW    VV:1E
-	return 1;
-	VV[0x0f] &= 0xbf;
-	func_0BF7(); /* always returns 0 */
-	return 1;
-
-7A5A:
+}
+/* 7A5A */
+void __attribute__((interrupt)) timer1_1(void)
+{
 	func_7B4D(); /* always returns 0 */
-	11                 EXX     
-	10                 EXA     
+	exx();
+	exa();
 	enable_interrupts();
 	[9949]--;
 	return; /* FROM INTERRUPT */
-
-7A6A:
-	VV[0x0F] &= 0xCF;
-	VV[0x0F] |= 0x08;
-	A = VV[0x1F];
-	48 25              SLL     A
-	48 A8              TABLE   
-	goto 7A81
-[7C6F]
-[7C7F]
-[7C9D]
-[7CAD]
-[7CBD]
-7A81:
-	[0x991F] = BC;
-	HL = 0x7A04;
-	[0x9818] = HL;
-	55 00 80           OFFIW   VV:00,$80
-	5E 00              BIT     6,VV:00
+}
+/* always returns 0 */
+/* 7A6A */
+void func_7A6A(void)
+{
+	VV[0x0F] &= 0xCF; /* 1100 1111 */
+	VV[0x0F] |= 0x08; /* 0000 1000 */
+	switch (VV[0x1F]) {
+	case 0: [0x991F] = 0x7C6F; break;
+	case 1: [0x991F] = 0x7C7F; break;
+	case 2: [0x991F] = 0x7C9D; break;
+	case 3: [0x991F] = 0x7CAD; break;
+	case 4: [0x991F] = 0x7CBD; break;
+	}
+	[0x9818] = timer1_2;
+	if ((VV[0x00] & 0x80) && (VV[0x00] & 0x40) && (VV[0x1d] <= 0x13))
+		VV[0x1D] = 0x13;
 	return 0;
-	25 1D 13           GTIW    VV:1D,$13
-	VV[0x1D] = 0x13;
-	return 0;
+}
 
 7A99:
 	55 0F 69           OFFIW   VV:0F,$69
@@ -7265,61 +7256,55 @@ void func_798D(void)
 7AB9:
 	5E 00              BIT     6,VV:00
 	goto 7AC0
-	if (!sw_cn7())
-		return 0;
-	goto 7A6A
+	if (sw_cn7())
+		func_7A6A(); /* always returns 0 */
+	return 0;
 7AC0:
 	if (!sw_cn7())
-		goto 7A6A;
+		func_7A6A(); /* always returns 0 */
 	return 0;
 
 7AC4:
-	45 0F 18           ONIW    VV:0F,$18
-	return 0;
-	5C 0F              BIT     4,VV:0F
-	goto 7AF7
-	65 1F 04           NEIW    VV:1F,$04
-	goto 7AD4
-	75 1F 01           EQIW    VV:1F,$01
-	goto 7ADA
+	if (!(VV[0x0f] & 0x18))
+		return 0;
+	if (!(VV[0x0f] & 0x10))
+		goto 7AF7;
+	if (VV[0x1f] == 0x04)
+		goto 7AD4;
+	if (VV[0x1f] != 0x01)
+		goto 7ADA;
 7AD4:
-	65 1D 0E           NEIW    VV:1D,$0E
-	stepper_vref(0x05);
+	if (VV[0x1d] == 0x0e)
+		stepper_vref(0x05);
 7ADA:
 	30 1D              DCRW    VV:1D
 	75 1D 00           EQIW    VV:1D,$00
 	return 0;
-	65 1F 04           NEIW    VV:1F,$04
-	goto 7AE8
-	75 1F 01           EQIW    VV:1F,$01
-	goto 7AEC
-	stepper_vref(0x03);
-	goto 7AEF
-7AEC:
-	stepper_vref(0x05);
-7AEF:
+	if (VV[0x1f] == 0x04)
+		goto 7AE8;
+	if (VV[0x1f] == 0x01) stepper_vref(0x03);
+	else                  stepper_vref(0x05);
 	VV[0x0F] &= 0xEF;
-	5D 0F              BIT     5,VV:0F
+	if (!(VV[0x0f] & 0x20))
+		return 0;
+	func_7A6A(); /* always returns 0 */
 	return 0;
-	goto 7A6A
 7AF7:
 	20 1D              INRW    VV:1D
 	5D 00              BIT     5,VV:00
 	A = 0x0F;
 	A = 0x1D;
-	74 F8 1D           EQAW    VV:1D
-	return 0;
-	55 00 80           OFFIW   VV:00,$80
-	A = func_7851();
-	goto 7B13
-	30 1D              DCRW    VV:1D
-	A = [0x7C9A];
+	if (VV[0x1d] != A)
+		return 0;
+	if ((VV[0x00] & 0x80) || !func_7851()) {
+		VV[0x0F] |= 0x41
+		VV[0x0F] &= 0x77;
+		VV[0x00] &= 0xDF;
+		return 0;
+	}
+	if (VV[0x1d]--)
+		A = [0x7C9A];
 	TM1 = A;
-	return 0;
-7B13:
-	VV[0x0F] |= 0x41
-	VV[0x0F] &= 0x77;
-	VV[0x00] &= 0xDF;
 	return 0;
 
 7B1D:
@@ -7338,8 +7323,10 @@ void func_798D(void)
 	5D 00              BIT     5,VV:00
 	HL = 0x000F;
 	HL = 0x001D;
-	74 AF              DGT     EA,HL
-	goto 7A6A;
+	74 AF              DGT     EA,HL {
+		func_7A6A(); /* always returns 0 */
+		return 0;
+	}
 	59 0F              BIT     1,VV:0F
 	return 1;
 	HL = 0x994B;
@@ -7353,7 +7340,7 @@ void func_798D(void)
 /* 7B4D */
 void func_7B4D(void)
 {
-	HL = [991D];
+	HL = [0x991D];
 	A  = [C008];
 	if (!(VV[0x00] & 0x20))
 		[C008] = [HL + A];
