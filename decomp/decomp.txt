@@ -6992,43 +6992,39 @@ void func_7875(void)
 }
 /* always returns 0 */
 /* 7888 */
-void func_7888(uint16_t HL)
+void func_7888(uint16_t val)
 {
 	do {
-		DE = [9917];
-		EA = HL;
-		if (EA == DE) {
-			main_loop_1(); /* always returns 0 */
-			return 0;
-		}
-		push(HL);
+		int newval;
+
+		if ([0x9917] == val)
+			break;
+
 		main_loop_1(); /* always returns 0 */
-		HL = pop();
-		if (VV[0x00] & 0x80) VV[0x1F] = 0x01;
-		else                 VV[0x1F] = 0x03;
-		push(HL);
-		DE = [9917];
-		EA = HL;
-		VV[0x00] &= 0xBF;
-		int borrow = (EA >= DE);
-		EA -= DE;
-		if (!borrow) {
-			VV[0x00] |= 0x40;
-			EA = DE;
-			EA -= HL;
+
+		if (VV[0x00] & 0x80) VV[0x1f] = 0x01;
+		else                 VV[0x1f] = 0x03;
+
+		VV[0x00] &= 0xBF; /* 1011 1111 */
+
+		newval = val - [0x9917];
+		if (newval < 0) {
+			VV[0x00] |= 0x40; /* 0100 0000 */
+			newval = [0x9917] - val;
 		}
-		HL = 0x001E;
-		if (EA < HL) {
-			EA = [0x001E];
-			VV[0x00] ^= 0x40;
+		if (newval < 0x001E) {
+			newval = 0x001E;
+			VV[0x00] ^= 0x40; /* 0100 0000 */
 		}
-		HL = 0x9949;
-		[HL] = EA;
+		[0x9949] = newval;
+
 		func_798D(); /* always returns 0 */
+
 		if (!(VV[0x00] & 0x80))
 			VV[0x00] |= 0x01;
-		HL = pop();
+
 	} while (!(VV[0x00] & 0x80));
+
 	main_loop_1(); /* always returns 0 */
 	return 0;
 }
@@ -7161,10 +7157,8 @@ void func_798D(void)
 	func_7C1F(); /* always returns 0 */
 	if (VV[0x1f] == 0x04 || VV[0x1f] == 0x01) {
 		VV[0x00] |= 0x20;
-		HL = 0x9949;
-		[HL] <<= 1;
-		HL = 0x994B;
-		[HL] <<= 1;
+		[0x9949] <<= 1;
+		[0x994B] <<= 1;
 		A = 0x1C;
 	}
 	VV[0x1D] = 0x0E;
@@ -7200,7 +7194,7 @@ void __attribute__((interrupt)) timer1_2(void)
 		A = [HL+A];
 		TM1 = A;
 		40 C4 7A           CALL    $7AC4
-		40 99 7A           CALL    $7A99
+		func_7A99(); /* always returns 0 */
 		HL = pop();
 		DE = pop();
 		BC = pop();
@@ -7243,7 +7237,7 @@ void __attribute__((interrupt)) timer1_1(void)
 	exx();
 	exa();
 	enable_interrupts();
-	[9949]--;
+	[0x9949]--;
 	return; /* FROM INTERRUPT */
 }
 /* always returns 0 */
@@ -7264,36 +7258,34 @@ void func_7A6A(void)
 		VV[0x1D] = 0x13;
 	return 0;
 }
+/* always returns 0 */
+/* 7A99 */
+void func_7A99(void)
+{
+	if (VV[0x0f] & 0x69)
+		return 0;
+	if (!func_7B1D())
+		return 0;
+	if (VV[0x00] & 0x80) {
+		if ((!(VV[0x00] & 0x40) && !sw_cn7()) ||
+		    ( (VV[0x00] & 0x40) &&  sw_cn7()))
+			func_7A6A(); /* always returns 0 */
+		return 0;
+	}
+	if (VV[0x0f] & 0x10)
+		return 0;
+	if (!sw_cn7()) {
+		VV[0x00] &= 0xFD;
+		return 0;
+	}
 
-7A99:
-	55 0F 69           OFFIW   VV:0F,$69
-	return 0;
-	40 1D 7B           CALL    $7B1D
-	return 0;
-	55 00 80           OFFIW   VV:00,$80
-	goto 7AB9
-	55 0F 10           OFFIW   VV:0F,$10
-	return 0;
-	if (!sw_cn7())
-		goto 7AB5;
-	55 00 02           OFFIW   VV:00,$02
-	beep_and_hang(2, 3); /* HANG, never returns */
+	if (VV[0x00] & 0x02)
+		beep_and_hang(2, 3); /* HANG, never returns */
 
-	VV[0x00] |= 0x02
+	VV[0x00] |= 0x02;
+
 	return 0;
-7AB5:
-	VV[0x00] &= 0xFD;
-	return 0;
-7AB9:
-	5E 00              BIT     6,VV:00
-	goto 7AC0
-	if (sw_cn7())
-		func_7A6A(); /* always returns 0 */
-	return 0;
-7AC0:
-	if (!sw_cn7())
-		func_7A6A(); /* always returns 0 */
-	return 0;
+}
 
 7AC4:
 	if (!(VV[0x0f] & 0x18))
@@ -7338,34 +7330,36 @@ void func_7A6A(void)
 	TM1 = A;
 	return 0;
 
-7B1D:
-	HL = 0x9949;
-	[HL]--;
-	5F 00              BIT     7,VV:00
-	C9                 JR      7B2D
-	HL = 0x0000;
-	if (EA != HL)
-		return 1;
-	beep_and_hang(2, 3); /* HANG, never returns */
+/* 7B1D */
+int func_7B1D(void)
+{
+	[0x9949]--;
 
-7B2D:
+	if (VV[0x00] & 0x80) {
+		if (EA == 0x0000)
+			beep_and_hang(2, 3); /* HANG, never returns */
+		return 1;
+	}
+
 	if (VV[0x0f] & 0x08)
 		return 1;
-	5D 00              BIT     5,VV:00
-	HL = 0x000F;
-	HL = 0x001D;
-	74 AF              DGT     EA,HL {
-		func_7A6A(); /* always returns 0 */
-		return 0;
+
+	if (VV[0x00] & 0x20) HL = 0x001D;
+	else                 HL = 0x000F;
+
+	if (EA > HL) {
+		if (!(VV[0x0f] & 0x02))
+			return 1;
+		[0x994B]--;
+		if (EA == 0x0000)
+			goto 1E8F;
+		return 1;
 	}
-	59 0F              BIT     1,VV:0F
-	return 1;
-	HL = 0x994B;
-	[HL]--;
-	DE = 0x0000;
-	74 EE              DNE     EA,DE
-	goto 1E8F;
-	return 1;
+
+	func_7A6A(); /* always returns 0 */
+
+	return 0;
+}
 
 /* always returns 0 */
 /* 7B4D */
@@ -7493,35 +7487,24 @@ void func_7BBE(void)
 /* 7C1F */
 void func_7C1F(void)
 {
-	HL = 0x9917;
-	EA = [HL];
-	BC = [0x9949];
+	uint16_t val;
 	if (!(VV[0x00] & 0x40)) {
-		EA += BC;
-		DE = [0x01F4];
-		if (EA <= DE) {
-			[HL] = EA;
+		val = [0x9917] + [0x9949];
+		if (val <= 0x01F4) {
+			[0x9917] = val;
 			return 0;
 		}
-		DE = EA;
-		[0x9949] = [0x0213] - DE + BC;
-		EA = [0x0213];
-		[HL] = EA;
+		[0x9949] = 0x0213 - val + [0x9949];
+		[0x9917] = 0x0213;
 		return 0;
 	}
-	EA -= BC;
-	DE = [0x0029];
-	if (DE <= EA) {
-		[HL] = EA;
+	val = [0x9917] - [0x9949];
+	if (val >= 0x0029) {
+		[0x9917] = val;
 		return 0;
 	}
-	DE = [0x000A];
-	EA -= DE;
-	EA += BC;
-	BC = EA;
-	[0x9949] = BC;
-	EA = DE;
-	[HL] = EA;
+	[0x9949] = - 0x000A + val + [0x9949];
+	[0x9917] =   0x000A;
 	return 0;
 }
 
