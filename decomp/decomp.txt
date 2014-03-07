@@ -2,14 +2,22 @@
 #define FLAGS_1           0x10
 #define FLAGS_1_SHORTBEEP (1<<2) /* 0x04 */
 
+#define PRINT_THIS_CHAR   0x15
 #define DIPSW1            0x31
 #define DIPSW2            0x32
 #define CHARTABLE_FIELD_1 0x3f
 #define ADDRESS_93C06     0x42
 #define CHECKSUM_93c06    0x56
 
+/* 99 */
+uint16_t *data_buffer_size = 0x9915;
+uint16_t *data_buffer_wptr = 0x9911;
+uint16_t *data_buffer_rptr = 0x9913;
+
+#define DATA_BUFFER_FULL 0x02
+
 0000: goto _start;                     /* reset */
-0004: goto _irq0;                      /* IRQ 0 */ /* INTNMI */
+0004: goto irq_nmi;                    /* IRQ 0 */ /* INTNMI */
 0008: exx();                           /* IRQ 1 */ /* INTFT0, INTFT1 */
 0009: exa();
 000A: goto 9817;
@@ -18,7 +26,7 @@
 0019: exa();
 001A: goto 981A;
 0020: 00                 NOP           /* IRQ 4 */
-0028: goto 20CE; /* IRQ 5 */
+0028: goto irq_serial;                 /* IRQ 5 */ /* INTSR, INTST */ /* serial */
 
 002B: void delay(C ms){}
 0041: [HL]--; return;
@@ -52,7 +60,7 @@
 00AA: 798D /* DONE */ func_798D(); /* always returns 0 */
 00AC: 7B95 /* DONE */ sw_cn7();
 00AE: 1680
-00B0: 1B02
+00B0: 1B02 /* DONE */ func_1B02(); /* always returns 0 */
 00B2: 0050
 00B4: 242B /* DONE */ { if (D > 0x97) D = 0x90; if (D < 0x90) D = 0x97; }
 00B6: 28F4 /* DONE */ func_28F4();
@@ -103,7 +111,29 @@ int skit(int interrupt)
 	return ret;
 }
 
+#if 0
+Epson LX-800 Technical Manual.pdf
+
+When the printer is initialized, the following operations are performed:
+a. Seek to carriage home position.
+b. Set to ON-LINE mode.
+c. Clear the all buffers.
+d. Set the line spacing to 1/6 inches.
+e. Set the page length to 11 or 12 inches, according to the DIP switch.
+f. Clear all vertical tab positions.
+g. Set the horizontal tab position to every 8 columns.
+i. Set the print mode according to the DIP switches.
+#endif
+
 _start:
+	/* 1>>> Clears all port outputs. Executes the program from address OH. */
+	/* 2>>> Sets up the I/O ports. Initializes the CR and PF motors. */
+	/* 3>>> Clears the memory. Sends the ACK signal to the host computer via the interface. */
+	/* 4>>> Detects the HOME signal. Outputs motor phase data. */
+	/* 5>>> Initializes the gate array. (Outputs the instructions to the gate array.) */
+	/* 6>>> Reads the DIP switch settings on the optional interface board if the board is installed. */
+	/* 7>>> Checks whether the paper is set or not. Sends the result to the gate array. */
+	/* 8>>> Enters the interface waiting state (main routine for data processing). */
 	V     = 0xff;
 	SP    = 0x0000; /* set stack pointer to internal ram */
 	MM    = 0x0f; /* 64k EPROM | Internal RAM Access */
@@ -390,7 +420,7 @@ int func_0348(void)
 	40 A2 0E           CALL    $0EA2
 	VA = pop();
 	VV[0x16] = A;
-	VV[0x15] = A;
+	VV[PRINT_THIS_CHAR] = A;
 	40 E4 05           CALL    $05E4
 	40 B1 08           CALL    $08B1
 	goto 0377
@@ -608,28 +638,25 @@ int func_0348(void)
 	67 00              NEI     A,$00
 	goto 0511
 	push(VA);
-	VV[0x15] = '-';
+	VV[PRINT_THIS_CHAR] = '-';
 	40 CD 05           CALL    $05CD
 	VA = pop();
 0511:
 	EA = byte_to_char(A);
-	A = EAL;
-	VV[0x15] = A;
+	VV[PRINT_THIS_CHAR] = EAL;
 	push(EA);
 	40 CD 05           CALL    $05CD
 	EA = pop();
-	A = EAH;
-	VV[0x15] = A;
+	VV[PRINT_THIS_CHAR] = EAH;
 	40 CD 05           CALL    $05CD
-	A = 0x48;
-	VV[0x15] = A;
+	VV[PRINT_THIS_CHAR] = 'H';
 	40 CD 05           CALL    $05CD
 	40 4C 05           CALL    $054C
 	86                 CALT    ($008C)
 	VV[0x2C] = 0x15;
 	VV[0x45] = 0x03;
 0533:
-	VV[0x15] = 0x48;
+	VV[PRINT_THIS_CHAR] = 'H';
 	40 E4 05           CALL    $05E4
 	40 B1 08           CALL    $08B1
 	goto 0541
@@ -685,7 +712,7 @@ void reset_ram(uint8_t c)
 05CD:
 {
 	do {
-		A = VV[0x15];
+		A = VV[PRINT_THIS_CHAR];
 		push(VA);
 		40 E4 05           CALL    $05E4
 		40 B1 08           CALL    $08B1
@@ -696,7 +723,7 @@ void reset_ram(uint8_t c)
 05DC:
 		86                 CALT    ($008C)
 		VA = pop();
-		VV[0x15] = A;
+		VV[PRINT_THIS_CHAR] = A;
 	} while (!(VV[0x05] & 0x01));
 	return 0;
 }
@@ -711,9 +738,8 @@ void reset_ram(uint8_t c)
 		goto 060E;
 	if (!(VV[0x09] & 0x80))
 		goto 0611;
-	5A 08              BIT     2,VV:08
-	55 09 40           OFFIW   VV:09,$40
-	VV[0x06] &= 0xef;
+	if ((VV[0x02] & 0x04) || (VV[0x09] & 0x40))
+		VV[0x06] &= 0xef;
 	goto 0611
 060E:
 	55 09 40           OFFIW   VV:09,$40
@@ -721,34 +747,31 @@ void reset_ram(uint8_t c)
 	VV[0x08] |= 0x20;
 	40 D6 1A           CALL    $1AD6
 	goto 0620;
-	VV[0x08] |= 0x02
-	VV[0x06] &= 0xef
+	VV[0x08] |= 0x02;
+	VV[0x06] &= 0xef;
 	goto 06C6;
 0620:
 	40 32 06           CALL    $0632
 	5C 07              BIT     4,VV:07
 	func_07F7(); /* always returns 0 */
 0628:
-	5E 04              BIT     6,VV:04
-	return 0;
-	if (VV[0x15] == 0x30)
-		VV[0x15] = 0x7F;
+	if ((VV[0x04] & 0x40) && VV[PRINT_THIS_CHAR] == '0')
+		VV[PRINT_THIS_CHAR] = 0x7F; /* slashed zero */
 	return 0;
 
 0632:
 	B = VV[0x04];
-	A = VV[0x15];
-	if (A == 0x5f) /* '_' */
+	A = VV[PRINT_THIS_CHAR];
+	if (A == '_')
 		VV[0x09] |= 0x08;
 	if (!(A & 0x80))
 		return 0;
 	if (!(VV[0x04] & 0x20)) {
 		if (A & 0x80) {
 			VV[0x09] |= 0x80;
-			VV[0x15] &= 0x7f;
+			VV[PRINT_THIS_CHAR] &= 0x7f;
 		}
-		A = VV[0x15];
-		if (A == 0x5f)
+		if (VV[PRINT_THIS_CHAR] == '_')
 			VV[0x09] |= 0x08;
 		return 0;
 	}
@@ -792,7 +815,7 @@ void reset_ram(uint8_t c)
 	67 F5              NEI     A,$F5
 	goto 06AA
 	67 FF              NEI     A,$FF
-	VV[0x15] = 0x20;
+	VV[PRINT_THIS_CHAR] = ' ';
 	return 0;
 06AA:
 	55 0A 20           OFFIW   VV:0A,$20
@@ -810,8 +833,8 @@ void reset_ram(uint8_t c)
 06C6:
 	5E 07              BIT     6,VV:07
 	return;
-	55 11 20           OFFIW   VV:11,$20
-	VV[0x07] &= 0xbf; /* 1011 1111 */
+	if (VV[0x11] & DATA_BUFFER_FULL)
+		VV[0x07] &= 0xbf; /* 1011 1111 */
 	return;
 
 06D0:
@@ -899,7 +922,7 @@ void reset_ram(uint8_t c)
 		if (A == [HL++]) {
 			HL -= 2;
 			A = [HL];
-			VV[0x15] = A;
+			VV[PRINT_THIS_CHAR] = A;
 			A = D;
 			if (A <= C) {
 				VV[0x08] |= 0x40;
@@ -927,7 +950,7 @@ void reset_ram(uint8_t c)
 /* 07F7 */
 void func_07F7(void)
 {
-	A = VV[0x15];
+	A = VV[PRINT_THIS_CHAR];
 	if (A & 0x80 || VV[0x0c] == 0x00)
 		return 0;
 	HL = 0x0815;
@@ -936,7 +959,7 @@ void func_07F7(void)
 		if (A == [HL++]) {
 			HL--;
 			/* VV[0x0C] from 1 to 0x0d */
-			VV[0x15] = [HL + (VV[0x0C] * 0x0C)];
+			VV[PRINT_THIS_CHAR] = [HL + (VV[0x0C] * 0x0C)];
 			return 0;
 		}
 	} while (B--);
@@ -961,7 +984,7 @@ void func_07F7(void)
 08B1:
 	VV[0x11] &= 0xFB;
 	VV[0x05] &= 0xFE;
-	A = VV[0x15];
+	A = VV[PRINT_THIS_CHAR];
 	BC = [0x9808];
 	func_22C9(); /* always returns 0 */
 	HL = EA;
@@ -973,7 +996,7 @@ void func_07F7(void)
 	return 1;
 	if (!(VV[0x05] & 0x80))
 		return 0;
-	if (VV[0x15] == ' ') {
+	if (VV[PRINT_THIS_CHAR] == ' ') {
 		VV[0x05] |= 0x01;
 		return 0;
 	}
@@ -1004,7 +1027,7 @@ void func_08FE(void)
 		A = [HL++];
 		if (!A)
 			return 0;
-		VV[0x15] = A;
+		VV[PRINT_THIS_CHAR] = A;
 		push(HL);
 		40 CD 05           CALL    $05CD
 		HL = pop();
@@ -1297,7 +1320,7 @@ void check_voltage(void)
 }
 /* NMI */
 /* 0C2A */
-void _irq0(void)
+void irq_nmi(void)
 {
 	if (VV != 0x98)
 		reset();
@@ -1760,7 +1783,7 @@ void sw_online_wait(void)
 	} else {
 		if (VV[0x11] & 0x40)
 			return 0;
-		MKH &= 0xfd; /* 1111 1101 */
+		MKH &= 0xfd; /* 1111 1101 */ /* activate INTSR */
 		A = 0x11;
 		TXB = A;
 	}
@@ -2041,8 +2064,7 @@ void func_10A8(void)
 	A = VV[0x22];
 	EA = EA / A, A = EA % A; /* simultaneously */
 	DE = EA;
-	HL = 0x9941;
-	EA = [HL];
+	EA = [0x9941];
 	74 AE              DGT     EA,DE
 	goto 1144
 	VV[0x12] |= 0x10
@@ -2065,7 +2087,7 @@ void func_10A8(void)
 	EA = [0x1000];
 	EA -= HL;
 1165:
-	HL = [0x9915];
+	HL = *data_buffer_size;
 	74 BF              DLT     EA,HL
 	goto 1170
 	push(EA);
@@ -2152,66 +2174,41 @@ void func_10A8(void)
 	return 0;
 
 120B:
-	VV[0x12] |= 0x02
+	VV[0x12] |= 0x02;
 	BC = [0x9941];
-	DE = [0x9913];
-1216:
-	A = [DE++];
-	8F                 CALT    ($009E)	rollover_DE_from_0x9000_to_0x8000();
-	77 00              EQI     A,$00
-	goto 123D
-	5B 12              BIT     3,VV:12
-	goto 1224
-	A = [DE++];
-	8F                 CALT    ($009E)	rollover_DE_from_0x9000_to_0x8000();
-	57 80              OFFI    A,$80
-	goto 123D
-1224:
-	BC--;
-	EA = 0x0000;
-	74 FD              DEQ     EA,BC
-	goto 1216
+	DE = *data_buffer_rptr;
+	do {
+		A = [DE++];
+		rollover_DE_from_0x9000_to_0x8000(); /* always returns 0 */
+		if (A != 0x00)
+			goto end_123D;
+		if (VV[0x12] & 0x08) {
+			A = [DE++];
+			rollover_DE_from_0x9000_to_0x8000(); /* always returns 0 */
+			if (A & 0x80)
+				goto end_123D;
+		}
+		BC--;
+	} while (BC != 0x0000);
 	VV[0x12] &= 0xFD;
-	55 12 10           OFFIW   VV:12,$10
-	goto 123D
-	DE = [0x993B];
-	40 0B 19           CALL    $190B
-	goto 124E
-	BC = 0x0000;
-123D:
+	if (!(VV[0x12] & 0x10)) {
+		DE = [0x993B];
+		if (!func_190B()) {
+			EA = [0x993F];
+			BC = [0x9941];
+			EA += BC;
+			[0x993F] = EA;
+			return 0;
+		}
+		BC = 0x0000;
+	}
+end_123D:
 	HL = [0x9941];
 	EA = HL;
 	EA -= BC;
 	HL = EA;
 	[0x9943] = HL;
 	[0x9941] = BC;
-	return 1;
-124E:
-	HL = 0x993F;
-	EA = [HL];
-	BC = [0x9941];
-	EA += BC;
-	[HL] = EA;
-	return 0;
-125C:
-	DE = [0x9941];
-	EA = 0x0000;
-	74 EE              DNE     EA,DE
-	return 0;
-	DE--;
-	[0x9941] = DE;
-	func_2127(); /* ignore rets, there's a nop after this */
-	EA = 0x0000;
-	EAH = A;
-	5B 12              BIT     3,VV:12
-	goto 127D
-	push(EA);
-	func_2127(); /* ignore rets, there's a nop after this */
-	EA = pop();
-	EAL = A;
-127D:
-	HL = 0x9925;
-	[HL] = EA;
 	return 1;
 
 1283:
@@ -2245,7 +2242,7 @@ void func_10A8(void)
 	EA <<= 1;
 	BC = EA;
 	BC--;
-	DE = [0x9913];
+	DE = *data_buffer_rptr;
 	EA = DE;
 	EA += BC;
 	DE = EA;
@@ -2365,7 +2362,7 @@ int is_printable_char(uint8_t A)
 	if (A != 0x15) /* NAK */
 		return 0;
 	A = 0x10;
-	VV[0x15] = A;
+	VV[PRINT_THIS_CHAR] = A;
 	return 1;
 }
 /* always returns 0 */
@@ -2422,7 +2419,7 @@ void func_1377(void)
 	HL = 0x140C + (A<<1);
 	goto [HL];
 13D2:
-	A = VV[0x15];
+	A = VV[PRINT_THIS_CHAR];
 	if (!is_printable_char(A))
 		goto 134D;
 	return 0;
@@ -2566,29 +2563,37 @@ void func_1377(void)
 14DA: goto 14E1
 14DB: VV[0x02] |= 0x01
 14DE: VV[0x0A] |= 0x08
-14E1: 57 40              OFFI    A,$40
-14E3: VV[0x0B] |= 0x80
-14E6: 57 80              OFFI    A,$80
-14E8: VV[0x0A] |= 0x10
-14EB: goto 1507
-14EC: 58 02              BIT     0,VV:02
-14EE: 59 02              BIT     1,VV:02
-14F0: goto 1507
-14F1: VV[0x02] &= 0xFD;
-14F4: VV[0x0A] &= 0xF7;
-14F7: goto 1507
-14F8: VV[0x0B] |= 0x04;
-14FB: goto 1507
-14FC: VV[0x0B] &= 0xFB;
-14FF: goto 1507
-1500: VV[0x0A] |= 0x04;
-1503: goto 1507
-1504: VV[0x0A] &= 0xFB;
-1507: goto 1536
-1508: VV[0x0A] |= 0x20;
-150B: goto 1536
-150C: VV[0x0A] &= 0xDF;
-150F: goto 1536
+14E1:
+	57 40              OFFI    A,$40
+	VV[0x0B] |= 0x80
+	57 80              OFFI    A,$80
+	VV[0x0A] |= 0x10
+	goto 1536
+
+14EC:
+	if (!(VV[0x02] & 0x01) && (VV[0x02] & 0x2)) {
+		VV[0x02] &= 0xFD;
+		VV[0x0A] &= 0xF7;
+	}
+	goto 1536
+
+14F8:
+	VV[0x0B] |= 0x04;
+	goto 1536
+
+14FC:
+	VV[0x0B] &= 0xFB;
+	goto 1536
+1500:
+	VV[0x0A] |= 0x04;
+	goto 1536
+1504:
+	VV[0x0A] &= 0xFB;
+	goto 1536
+	VV[0x0A] |= 0x20;
+	goto 1536
+	VV[0x0A] &= 0xDF;
+	goto 1536
 
 1510:
 	VV[0x0A] |= 0x80;
@@ -2856,22 +2861,22 @@ XXXXXX
 	goto 0195;
 
 16F7:
-	98                 CALT    ($00B0)
+	func_1B02(); /* always returns 0 */
 16F8:
 	83                 CALT    ($0086)
 	40 82 2B           CALL    $2B82
 	goto 1707;
 16FD:
-	98                 CALT    ($00B0)
+	func_1B02(); /* always returns 0 */
 	5F 02              BIT     7,VV:02
 	goto 1707
 	goto 16F8
-	98                 CALT    ($00B0)
+	func_1B02(); /* always returns 0 */
 	40 6F 2B           CALL    $2B6F
 	83                 CALT    ($0086)
 1707:
-	55 11 01           OFFIW   VV:11,$01
-	return 0;
+	if (VV[0x11] & 0x01)
+		return 0;
 170B:
 	HL = [0x9905];
 170F:
@@ -2933,7 +2938,7 @@ XXXXXX
 176B: return 0;
 176C: 9E                 CALT    ($00BC)
 176D: B = [0x982C];
-	if (VV[0x15] != 0x00)
+	if (VV[PRINT_THIS_CHAR] != 0x00)
 		goto 177B;
 1775: 8E                 CALT    ($009C)
 1776: 37 17              LTI     A,$17
@@ -3169,8 +3174,9 @@ XXXXXX
 1911: EA = EA / A, A = EA % A; /* simultaneously */
 1913: 67 00              NEI     A,$00
 1915: goto 1929
-1916: 55 11 20           OFFIW   VV:11,$20
-1919: return 1;
+1916:
+	if (VV[0x11] & 0x20)
+		return 1;
 191A: EA = DE;
 191B: 5A 09              BIT     2,VV:09
 191D: A = 0x0C;
@@ -3180,7 +3186,7 @@ XXXXXX
 1925: return 1;
 1926: VV[0x07] &= 0xBF;
 1929: goto 2291;
-192C: 98                 CALT    ($00B0)
+192C: func_1B02(); /* always returns 0 */
 192D: 83                 CALT    ($0086)
 192E: 40 0B 17           CALL    $170B
 1931: 5D 03              BIT     5,VV:03
@@ -3480,7 +3486,7 @@ void func_1AC2(void)
 	VV[0x09] &= 0x7F;
 	77 00              EQI     A,$00
 	return 1;
-	VV[0x15] = ' ';
+	VV[PRINT_THIS_CHAR] = ' ';
 	return 0;
 1AF8:
 	VV[0x08] &= 0xFE;
@@ -3488,8 +3494,14 @@ void func_1AC2(void)
 	VV[0x08] |= 0x01
 	return 0;
 
-1B02:
-	VV[0x05] |= 0x04
+/* always returns 0 */
+/* 1B02 */
+void func_1B02(void)
+{
+	VV[0x05] |= 0x04;
+	func_1B05();
+	return 0;
+}
 
 /* always returns 0 */
 /* 1B05 */
@@ -3531,8 +3543,8 @@ void func_1B05(void)
 	func_2EA6(); /* always returns 0 */
 	func_1ED9(); /* always returns 0 */
 1B60:
-	5C 11              BIT     4,VV:11
-	goto 1B99
+	if (!(VV[0x11] & 0x10))
+		goto 1B99;
 	VV[FLAGS_1] |= 0x10; /* 0001 0000 */
 	VV[FLAGS_1] &= 0xBF; /* 1011 1111 */
 	VV[0x2A] = 0x00;
@@ -3544,8 +3556,8 @@ void func_1B05(void)
 		BC = 0x000B;
 	func_2EA6(); /* always returns 0 */
 	func_1ED9(); /* always returns 0 */
-	5B 11              BIT     3,VV:11
-	goto 1B99
+	if (!(VV[0x11] & 0x08))
+		goto 1B99;
 	VV[FLAGS_1] |= 0x40; /* 0100 0000 */
 	VV[0x2A] = 0x20;
 	VV[0x2B] = 0x10;
@@ -4207,9 +4219,9 @@ void func_1FAE(void)
 /* always returns 0 */
 void func_2023(void)
 {
-	[0x9911] = 0x8000;
-	[0x9913] = 0x8000;
-	[0x9915] = 0x1000;
+	*data_buffer_wptr = 0x8000;
+	*data_buffer_rptr = 0x8000;
+	*data_buffer_size = 0x1000;
 	return 0;
 }
 /* always returns 0 */
@@ -4243,6 +4255,24 @@ void func_2033(void)
 
 2079: DW: 80 57 47 40 C0 80 40 20 15 10 08 04 80 20 10 04 5F 11
 
+/* unreal */
+void data_buffer_fifo_put(uint8_t c)
+{
+	DE = *data_buffer_wptr;
+	[DE++] = c;
+	rollover_DE_from_0x9000_to_0x8000(); /* always returns 0 */
+	*data_buffer_wptr = DE;
+}
+/* unreal */
+uint8_t data_buffer_fifo_get(void)
+{
+	DE = *data_buffer_rptr;
+	A = [DE++];
+	rollover_DE_from_0x9000_to_0x8000(); /* always returns 0 */
+	*data_buffer_rptr = DE;
+	return A;
+}
+
 /* always returns 0 */
 void func_2089(void)
 {
@@ -4258,59 +4288,53 @@ void func_2089(void)
 	[0xc004] = (A &= 0xfe); /* 1111 1110 */
 	enable_interrupts();
 	[0xc004] = (A &= 0xdf); /* 1101 1111 */
-	DE = [0x9911];
-	[DE++] = EAH;
-	rollover_DE_from_0x9000_to_0x8000();
-	[0x9911] = DE;
+
+	data_buffer_fifo_put(EAH);
+
 	disable_interrupts();
-	[0x9915]--;
-	if (EA == 0x0000) {
-		VV[0x11] |= 0x02;
+
+	*data_buffer_size--;
+
+	if (*data_buffer_size == 0x0000) {
+		VV[0x11] |= DATA_BUFFER_FULL;
 		[0xC004] &= 0xFD; /* 1111 1101 */
 	}
 	enable_interrupts();
 	return 0;
 }
 
-20CE:
-	push(VA);
-	A = RXB;
-	MKH |= 0x02; /* 0000 0010 */
+/* 20CE */
+void __attribute__((interrupt)) irq_serial(void)
+{
+	uint8_t rxb = RXB;
+
+	MKH |= 0x02; /* 0000 0010 */ /* mask INTSR */
+
 	enable_interrupts();
-	59 11              BIT     1,VV:11
-	48 6B              SKNIT   ER
-	goto 210D
-	push(EA);
-	push(DE);
-	push(HL);
-	DE = [0x9911];
-	[DE++] = A;
-	rollover_DE_from_0x9000_to_0x8000();
-	[0x9911] = DE;
-	disable_interrupts();
-	DE = 0x9915;
-	EA = [DE];
-	EA--;
-	[DE] = EA;
-	HL = 0x0000;
-	74 EF              DNE     EA,HL
-	VV[0x11] |= 0x02
-	enable_interrupts();
-	HL = 0x0100;
-	74 FF              DEQ     EA,HL
-	goto 210A
-	VV[0x11] |= 0x40;
-	[0xC004] |= 0x01;
-	A = 0x13;
-	TXB = A;
-210A:
-	HL = pop();
-	DE = pop();
-	EA = pop();
-210D:
-	VA = pop();
-	MKH &= 0xfd; /* 1111 1101 */
+	if (!(VV[0x11] & DATA_BUFFER_FULL) && !(IRR & INTER)) {
+		/* INTER == serial parity or framing error */
+
+		data_buffer_fifo_put(rxb);
+
+		disable_interrupts();
+
+		*data_buffer_size--;
+		if (*data_buffer_size == 0x0000)
+			VV[0x11] |= DATA_BUFFER_FULL;
+
+		enable_interrupts();
+
+		if (*data_buffer_size == 0x0100) {
+			VV[0x11] |= 0x40;
+			[0xC004] |= 0x01;
+			TXB = 0x13;
+		}
+	}
+
+	MKH &= 0xfd; /* 1111 1101 */ /* activate INTSR */
+
 	return; /* FROM INTERRUPT */
+}
 
 2112:
 	40 A5 0E           CALL    $0EA5
@@ -4321,50 +4345,41 @@ void func_2089(void)
 		return 0;
 	goto 2112;
 
-211B:
-int func_211B(void)
+/* 211B */
+int data_buffer_empty(void)
 {
-	return ([0x9915] == 0x1000);
+	return (*data_buffer_size == 0x1000);
 }
 
 /* 2127 */
 int func_2127(void)
 {
-	MKH |= 0x02; /* 0000 0010 */
-	if (func_211B()) {
-		MKH &= 0xfd; /* 1111 1101 */
+	MKH |= 0x02; /* 0000 0010 */ /* mask INTSR */
+
+	if (data_buffer_empty()) {
+		MKH &= 0xfd; /* 1111 1101 */ /* activate INTSR */
 		return 0;
 	}
-	[0x9915]++;
-	VV[0x11] &= 0xFD;
+
+	*data_buffer_size++;
+	VV[0x11] &= ~DATA_BUFFER_FULL;
+
 	if (!(VV[0x11] & 0x80))
 		[0xC004] |= 0x02;
-	DE = [0x9913];
-	A = [DE++];
-	VV[0x15] = A;
-	rollover_DE_from_0x9000_to_0x8000();
-	[0x9913] = DE;
-	MKH &= 0xfd; /* 1111 1101 */
-	if (!(VV[0x11] & 0x40)) {
-		func_2FE9(); /* always returns 0 */
-		A = VV[0x15];
-		return 1;
+
+	VV[PRINT_THIS_CHAR] = data_buffer_fifo_get();
+
+	MKH &= 0xfd; /* 1111 1101 */ /* activate INTSR */
+
+	if ((VV[0x11] & 0x40) && *data_buffer_size == 0x0210) {
+		VV[0x11] &= 0xbf; /* 1011 1111 */
+		TXB = 0x11;
+		[0xC004] &= 0xFE;
+		[0xC004] |= 0x02;
 	}
-	DE = 0x9915;
-	EA = [DE];
-	HL = 0x0210;
-	if (EA != HL) {
-		func_2FE9(); /* always returns 0 */
-		A = VV[0x15];
-		return 1;
-	}
-	VV[0x11] &= 0xbf; /* 1011 1111 */
-	A = 0x11;
-	TXB = A;
-	[0xC004] &= 0xFE;
-	[0xC004] |= 0x02;
+
 	func_2FE9(); /* always returns 0 */
-	A = VV[0x15];
+	A = VV[PRINT_THIS_CHAR];
 	return 1;
 }
 
@@ -4378,8 +4393,8 @@ int func_2127(void)
 	VV[0x33] = 0x00;
 	HL = 0x9A79;
 	[0x9945] = HL;
-	58 11              BIT     0,VV:11
-	goto 21EE
+	if (!(VV[0x11] & 0x01))
+		goto 21EE;
 	DE = [0x9951];
 	EA = DE;
 	DE = [0x9939] + 3;
@@ -4438,17 +4453,15 @@ int func_2127(void)
 /* 21F3 */
 void rollover_DE_from_0x9000_to_0x8000(void)
 {
-	EA = 0x9000;
-	if (EA == DE)
-		DE = 0x8000;
+	if (DE == 0x9000)
+		DE =  0x8000;
 }
 
 /* 21FC */
 void rollover_DE_from_0x7fff_to_0x8fff(void)
 {
-	EA = 0x7fff;
-	if (EA == DE)
-		DE = 0x8fff;
+	if (DE == 0x7fff)
+		DE =  0x8fff;
 }
 
 /* 2205 */
@@ -4486,7 +4499,7 @@ int func_2210(void)
 	HL = 0x9808;
 	EA = [HL];
 	HL = [0x9939];
-	A = VV[0x15];
+	A = VV[PRINT_THIS_CHAR];
 	if (VV[0x05] & 0x80)
 		func_2254();
 	[HL++] = A;
@@ -4602,8 +4615,26 @@ void func_2313(void)
 }
 
 2322:
-	55 12 80           OFFIW   VV:12,$80
-	goto 125C;
+	if (VV[0x12] & 0x80) {
+		DE = [0x9941];
+		EA = 0x0000;
+		74 EE              DNE     EA,DE
+		return 0;
+		DE--;
+		[0x9941] = DE;
+		func_2127(); /* ignore rets, there's a nop after this */
+		EA = 0x0000;
+		EAH = A;
+		if (VV[0x12] & 0x08) {
+			push(EA);
+			func_2127(); /* ignore rets, there's a nop after this */
+			EA = pop();
+			EAL = A;
+		}
+		HL = 0x9925;
+		[HL] = EA;
+		return 1;
+	}
 	DE = [0x995B];
 	EA = [DE];
 	HL = 0x0400;
@@ -6283,8 +6314,8 @@ void func_2EA6(void)
 	BC++;
 	EA = 0x03FF;
 	74 BD              DLT     EA,BC
-	40 1B 21           CALL    $211B
-	BC = 0x0000;
+	if (!data_buffer_empty())
+		BC = 0x0000;
 	if (!func_2210())
 		BC = 0x0000;
 	[0x9A75] = BC;
@@ -7377,14 +7408,14 @@ int sw_cn7(void)
 /* 7BA4 */
 void main_loop_1(void)
 {
-	while (VV[0x00] & 0x10) {
-		if (VV[0x0f] & 0xc0)
+	while (VV[0x0f] & 0xc0) {
+		if (VV[0x00] & 0x10)
 			func_1F9F(); /* ignore rets, there's a nop after this */
 		func_2089(); /* always returns 0 */
 	}
 }
-
 /* always returns 0 */
+/* 7BB1 */
 void func_7bb1(void)
 {
 	while (VV[0x0f] & 0xc0 || VV[0x01] & 0x30) {
@@ -7393,7 +7424,6 @@ void func_7bb1(void)
 		func_2089(); /* always returns 0 */
 	}
 }
-
 /* always returns 0 */
 /* 7BBE */
 void func_7BBE(void)
@@ -7629,11 +7659,11 @@ void stepper_vref(int v)
 void func_7D9B(void)
 {
 	EA = byte_to_char(A);
-	VV[0x15] = EAL;
+	VV[PRINT_THIS_CHAR] = EAL;
 	push(EA);
 	40 CD 05           CALL    $05CD
 	EA = pop();
-	VV[0x15] = EAH;
+	VV[PRINT_THIS_CHAR] = EAH;
 	40 CD 05           CALL    $05CD
 	return 0;
 }
