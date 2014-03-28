@@ -219,7 +219,7 @@ _start:
 
 01CF:
 	40 A2 0E           CALL    $0EA2
-	func_2089(); /* always returns 0 */
+	check_gate_array_input(); /* always returns 0 */
 	if (!func_2127())
 		goto 01CF;
 	return 0;
@@ -1794,7 +1794,7 @@ void sw_online_wait(void)
 /* always returns 0 */
 void func_0F9C(void)
 {
-	func_2089(); /* always returns 0 */
+	check_gate_array_input(); /* always returns 0 */
 	VV[0x14] &= 0xBF;
 	[0xC004] &= 0xEF;
 	if (!(VV[0x11] & 0x40)) {
@@ -2091,7 +2091,7 @@ void func_10A8(void)
 	74 BF              DLT     EA,HL
 	goto 1170
 	push(EA);
-	func_2089(); /* always returns 0 */
+	check_gate_array_input(); /* always returns 0 */
 	EA = pop();
 	goto 1165
 1170:
@@ -4089,7 +4089,7 @@ void func_1ED9(void)
 void func_1F0C(void)
 {
 	while (VV[0x0f] & 0x02)
-		func_2089(); /* always returns 0 */
+		check_gate_array_input(); /* always returns 0 */
 	return 0;
 }
 /* always returns 0 */
@@ -4166,7 +4166,7 @@ void func_1F75(void)
 
 int func_1F9F(void)
 {
-	if (234C())
+	if (func_234C())
 		return 1;
 	if (VV[0x40] & 0x40)
 		return 1;
@@ -4274,7 +4274,8 @@ uint8_t data_buffer_fifo_get(void)
 }
 
 /* always returns 0 */
-void func_2089(void)
+/* 2089 */
+void check_gate_array_input(void)
 {
 	if ( (VV[0x11] & 0x80)) return;
 	if (!(VV[0x11] & 0x40)) return;
@@ -4282,7 +4283,7 @@ void func_2089(void)
 	if (!([0xC002] & 0x80)) return;
 
 	disable_interrupts();
-	EA = [0xc002];
+	EA = [0xC002];
 	A  = [0xc004];
 	[0xc004] = (A |= 0x20); /* 0010 0000 */
 	[0xc004] = (A &= 0xfe); /* 1111 1110 */
@@ -4338,7 +4339,7 @@ void __attribute__((interrupt)) irq_serial(void)
 
 2112:
 	40 A5 0E           CALL    $0EA5
-	func_2089(); /* always returns 0 */
+	check_gate_array_input(); /* always returns 0 */
 
 2116:
 	if (func_2127())
@@ -4656,32 +4657,27 @@ void func_2313(void)
 	VV[0x40] &= 0xBF;
 	EA = 0x0100;
 	DE = [0x995B];
-74 AE              DGT     EA,DE
-	goto 235D;
-	VV[0x40] |= 0x40;
-	return 1;
-235D:
-	55 40 10           OFFIW   VV:40,0x10
-	goto 237A;
-	VV[0x40] = 0x00;
-	A = 0x00;
-	[0xc000] = A;
-	VV[0x3c] = A;
-	VV[0x3d] = A;
-	if (!func_2272())
-		return 0;
-	HL = 0x9837;
-	[HL++] =  A;
-	[HL  ] = EA; /* VV[0x38] */
-	BC = EA;
-237A:
-	func_2436();
-	goto 23A0
-	37 B0              LTI     A,$B0
-	37 B3              LTI     A,$B3
-	goto 2387;
-	VV[0x40] |= 0x80;
-2387:
+	if (EA > DE) {
+		VV[0x40] |= 0x40;
+		return 1;
+	}
+	if (!(VV[0x40] & 0x10)) {
+		VV[0x40] = 0x00;
+		A = 0x00;
+		[0xc000] = A;
+		VV[0x3c] = A;
+		VV[0x3d] = A;
+		if (!func_2272())
+			return 0;
+		HL = 0x9837;
+		[HL++] =  A;
+		[HL  ] = EA; /* VV[0x38] */
+		BC = EA;
+	}
+	if (!func_2436())
+		goto 23A0;
+	if (A >= 0xb0 && A < 0xb3)
+		VV[0x40] |= 0x80;
 	func_22E6(); /* always returns 0 */
 	if (VV[0x39] & 0x02)
 		A <<= 1;
@@ -4701,8 +4697,8 @@ void func_2313(void)
 	DE = [0x995D];
 	if (VV[0x37] == ' ')
 		goto 23DE;
-	5A 00              BIT     2,VV:00
-	goto 23C7
+	if (!(VV[0x00] & 0x04))
+		goto 23C7;
 	func_2418(); /* always returns 0 */
 	HL = [0x9959];
 23BD:
@@ -4730,27 +4726,28 @@ void func_2313(void)
 	55 00 04           OFFIW   VV:00,$04
 	func_2418(); /* always returns 0 */
 23E4:
-	BC = 0x0000;
-	40 F1 23           CALL    $23F1
-	goto 23E4
-	5A 00              BIT     2,VV:00
-	func_2418(); /* always returns 0 */
+	do {
+		BC = 0x0000;
+	} while (!func_23F1());
+	if (!(VV[0x00] & 0x04))
+		func_2418(); /* always returns 0 */
 	goto 23D9
-23F1:
-	5C 38              BIT     4,VV:38
-	goto 2405
-	55 38 04           OFFIW   VV:38,$04
-	goto 2403
-	5A 00              BIT     2,VV:00
-	goto 2400
-	74 5D 02           OFFI    E,$02
-	goto 2403
-	goto 2405
-2400:
-	74 4D 02           ONI     E,$02
-2403:
-	C = 0x80;
-2405:
+
+/* 23F1 */
+int func_23F1(void)
+{
+	if (!(VV[0x00] & 0x04) && !(E & 0x02) && (VV[0x38] & 0x10)) {
+	}
+	if (VV[0x38] & 0x10) {
+		if (VV[0x38] & 0x04) {
+			C = 0x80;
+		} else if (!(VV[0x00] & 0x04)) {
+			if (!(E & 0x02))
+				C = 0x80;
+		} else if (E & 0x02){
+			C = 0x80;
+		}
+	}
 	EA = [DE];
 	EA |= BC;
 	[DE++] = EA;
@@ -4764,6 +4761,7 @@ void func_2313(void)
 	if (!VV[0x3A]--)
 		return 1;
 	return 0;
+}
 
 /* always returns 0 */
 void func_2418(void)
@@ -5173,12 +5171,10 @@ void func_26B0(void)
 /* always returns 0 */
 void func_26DB(void)
 {
-	push(HL);
-	HL = [0x9963];
-	[C001] = [HL++];
-	[C002] = [HL++];
-	[C003] = [HL++];
-	HL = pop();
+	uint16_t *p = [0x9963];
+	[0xC001] = *p++; /* uint8_t */
+	[0xC002] = *p++; /* uint8_t */
+	[0xC003] = *p++; /* uint8_t */
 	return;
 }
 
@@ -6081,16 +6077,14 @@ int func_2E08(void)
 {
 	while (1) {
 		disable_interrupts();
-		DE = [9929];
-		HL = [990F];
+		EA = [0x9929];
+		HL = [0x990F];
 		enable_interrupts();
-		EA = DE;
 		if (HL != 0x0000) {
 			if (!(VV[0x01] & 0x80)) {
 				EA += HL;
-				DE = [0x0142];
-				if (EA > DE) func_2089(); /* always returns 0 */
-				else         return 0;
+				if (EA > 0x0142) check_gate_array_input(); /* always returns 0 */
+				else             return 0;
 				continue;
 			}
 			int borrow = (EA >= HL);
@@ -6104,9 +6098,8 @@ int func_2E08(void)
 			if (carry)
 				return 0;
 		}
-		DE = [0x0142];
-		if (EA > DE) return 1;
-		else         return 0;
+		if (EA > 0x0142) return 1;
+		else             return 0;
 	}
 }
 
@@ -6218,7 +6211,7 @@ void func_2EA6(void)
 }
 
 2EAE:
-	func_2089(); /* always returns 0 */
+	check_gate_array_input(); /* always returns 0 */
 	HL = 0x990F;
 	EA = [HL];
 	DE = 0x0000;
@@ -6238,7 +6231,7 @@ void func_2EA6(void)
 	40 F0 2E           CALL    $2EF0
 	return 1;
 2ED2:
-	func_2089(); /* always returns 0 */
+	check_gate_array_input(); /* always returns 0 */
 	HL = 0x990F;
 	EA = [HL];
 	DE = 0x0000;
@@ -6627,7 +6620,7 @@ void func_313F(void)
 		enable_interrupts();
 		push(BC);
 		do {
-			func_2089(); /* always returns 0 */
+			check_gate_array_input(); /* always returns 0 */
 		} while ((VV[0x0f] & 0x02) || (VV[0x01] & 0x30));
 		func_31B0(); /* always returns 0 */
 		BC = pop();
@@ -6794,7 +6787,7 @@ void func_326F(void)
 void func_32B9(void)
 {
 	while (VV[0x01] & 0x30)
-		func_2089(); /* always returns 0 */
+		check_gate_array_input(); /* always returns 0 */
 	return 0;
 }
 /* always returns 0 */
@@ -7405,7 +7398,7 @@ void main_loop_1(void)
 	while (VV[0x0f] & 0xc0) {
 		if (VV[0x00] & 0x10)
 			func_1F9F(); /* ignore rets, there's a nop after this */
-		func_2089(); /* always returns 0 */
+		check_gate_array_input(); /* always returns 0 */
 	}
 }
 /* always returns 0 */
@@ -7415,7 +7408,7 @@ void func_7bb1(void)
 	while (VV[0x0f] & 0xc0 || VV[0x01] & 0x30) {
 		if (VV[0x00] & 0x10)
 			func_1F9F(); /* ignore rets, there's a nop after this */
-		func_2089(); /* always returns 0 */
+		check_gate_array_input(); /* always returns 0 */
 	}
 }
 /* always returns 0 */
@@ -7429,7 +7422,7 @@ void func_7BBE(void)
 		if (!(VV[0x01] & 0x10) && !(PC & 0x04))
 			break;
 		func_1F9F(); /* ignore rets, there's a nop after this */
-		func_2089(); /* always returns 0 */
+		check_gate_array_input(); /* always returns 0 */
 	}
 	disable_interrupts();
 	if (VV[0x01] & 0x20) {
