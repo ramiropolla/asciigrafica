@@ -6,6 +6,10 @@
 #define DIPSW1            0x31
 #define DIPSW2            0x32
 #define CHARTABLE_FIELD_1 0x3f
+#define VOLTAGE_STATUS    0x41
+#define UNDER_VOLTAGE_1   (1<<0) /* 0x01 */
+#define UNDER_VOLTAGE_2   (1<<1) /* 0x02 */
+
 #define ADDRESS_93C06     0x42
 #define CHECKSUM_93c06    0x56
 
@@ -184,7 +188,7 @@ _start:
 	[9817] = 0x54; /* JMP instruction */
 	[981a] = 0x54; /* JMP instruction */
 	func_0BF7(); /* always returns 0 */
-	VV[0x41] &= 0xfe;
+	VV[VOLTAGE_STATUS] &= ~UNDER_VOLTAGE_1; /* 1111 1110 */
 	func_02CC(); /* always returns 0 */
 	func_2033(); /* always returns 0 */
 	func_2023(); /* always returns 0 */
@@ -1303,19 +1307,19 @@ void __attribute__((interrupt)) timer1_0(void)
 void check_voltage(void)
 {
 	A = CR1;
-	if (VV[0x41] & 0x02) { /* 0000 0010 */
+	if (VV[VOLTAGE_STATUS] & UNDER_VOLTAGE_2) { /* 0000 0010 */
 		if (A <= 0xb8) { /* less than 21.86 V */
-			VV[0x41] |= 0x01; /* 0000 0001 */
+			VV[VOLTAGE_STATUS] |= UNDER_VOLTAGE_1; /* 0000 0001 */
 			func_0C48(); /* always returns 0 */
 			write_all_93c06(); /* always returns 0 */
 			[0xC004] = 0xC3;
 			reset();
 		}
-		VV[0x41] &= 0xfd; /* 1111 1101 */
+		VV[VOLTAGE_STATUS] &= ~UNDER_VOLTAGE_2; /* 1111 1101 */
 		return 0;
 	}
 	if (A <= 0xb8) /* less than 21.86 V */
-		VV[0x41] |= 0x02; /* 0000 0010 */
+		VV[VOLTAGE_STATUS] |= UNDER_VOLTAGE_2; /* 0000 0010 */
 	return 0;
 }
 /* NMI */
@@ -1324,8 +1328,8 @@ void irq_nmi(void)
 {
 	if (VV != 0x98)
 		reset();
-	if (!(VV[0x41] & 0x01)) {
-		VV[0x41] |= 0x01;
+	if (!(VV[VOLTAGE_STATUS] & UNDER_VOLTAGE_1)) {
+		VV[VOLTAGE_STATUS] |= UNDER_VOLTAGE_1;
 		func_0C48(); /* always returns 0 */
 		write_all_93c06(); /* always returns 0 */
 		[0xC004] = 0xC3;
@@ -1344,8 +1348,8 @@ void func_0C48(void)
 	[0xc005] = 0x0000; /* Latches (and inverts) the data for pin 9 of the printhead. */
 	[0xc007] = 0x0000; /* Latches the phase data for the CR motor. */
 	EOM   = b10011001; /* to set LVx, output LVx */
-	[VV:0x0f] &= 0x3f; /* 0011 1111 */
-	[VV:0x01] &= 0xcf; /* 1100 1111 */
+	VV[0x0f] &= 0x3f; /* 0011 1111 */
+	VV[0x01] &= 0xcf; /* 1100 1111 */
 	func_0F9C(); /* always returns 0 */
 	return 0;
 }
