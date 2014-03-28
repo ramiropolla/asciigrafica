@@ -1903,19 +1903,19 @@ void func_debounced(uint16_t HL)
 /* virtual */
 int sw_line_feed_debounced()
 {
-	return func_debounced(0x0FE4);
+	return func_debounced(sw_line_feed);
 }
 int sw_form_feed_debounced()
 {
-	return func_debounced(0x0FEB);
+	return func_debounced(sw_form_feed);
 }
 int sw_load_eject_debounced()
 {
-	return func_debounced(0x0FF2);
+	return func_debounced(sw_load_eject);
 }
 int sw_online_debounced()
 {
-	return func_debounced(0x1003);
+	return func_debounced(sw_online);
 }
 /* always returns 0 */
 /* 1026 */
