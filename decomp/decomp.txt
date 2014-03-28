@@ -49,20 +49,20 @@ uint16_t *data_buffer_rptr = 0x9913;
 008C: 16f7
 008E: 0feb /* DONE */ sw_form_feed();
 0090: 0f01 /* DONE */ sw_online_wait(); /* always returns 0 */
-0092: 10A1 /* DONE */ { [C004] |= A; }
-0094: 109B /* DONE */ { [C004] &= A; }
+0092: 10A1 /* DONE */ { [0xC004] |= A; }
+0094: 109B /* DONE */ { [0xC004] &= A; }
 0096: 1b05 /* DONE */ func_1B05(); /* always returns 0 */
 0098: 1c93 /* DONE */ func_1C93();
 009A: 2089
 009C: 2116
 009E: 21F3
-00A0: 2E3A sw_cn6_debounced();
+00A0: 2E3A sw_paper_end_debounced();
 00A2: 313F /* DONE */ func_313F(); /* always returns 0 */
 00A4: 78D2
 00A6: 7BA4 /* DONE */ main_loop_1(); /* always returns 0 */
 00A8: 7B4D /* DONE */ func_7B4D(); /* always returns 0 */
 00AA: 798D /* DONE */ func_798D(); /* always returns 0 */
-00AC: 7B95 /* DONE */ sw_cn7();
+00AC: 7B95 /* DONE */ sw_home_position();
 00AE: 1680
 00B0: 1B02 /* DONE */ func_1B02(); /* always returns 0 */
 00B2: 0050
@@ -581,7 +581,7 @@ int func_0348(void)
 	VV[0x14] &= 0xfb;
 	func_0C48(); /* always returns 0 */
 	write_all_93c06(); /* always returns 0 */
-	goto 0000;
+	reset();
 	one_short_beep(); /* always returns 0 */
 	wait_for_button(); /* always returns 0 */
 	40 B8 04           CALL    $04B8
@@ -1345,8 +1345,8 @@ void func_0C48(void)
 {
 	MKL    = 0xff; /* mask all interrupts */
 	MKH    = 0xff; /* mask all interrupts */
-	[0xc005] = 0x0000; /* Latches (and inverts) the data for pin 9 of the printhead. */
-	[0xc007] = 0x0000; /* Latches the phase data for the CR motor. */
+	[0xC005] = 0x0000; /* Latches (and inverts) the data for pin 9 of the printhead. */
+	[0xC007] = 0x0000; /* Latches the phase data for the CR motor. */
 	EOM   = b10011001; /* to set LVx, output LVx */
 	VV[0x0f] &= 0x3f; /* 0011 1111 */
 	VV[0x01] &= 0xcf; /* 1100 1111 */
@@ -1692,7 +1692,7 @@ char nibble_to_char(uint8_t A)
 	goto 0EE5
 	if (!func_2E08())
 		goto 0EF3;
-	if (func_32EC() || !sw_cn6_debounced())
+	if (func_32EC() || !sw_paper_end_debounced())
 		goto 0EE5;
 	5E 13              BIT     6,VV:13
 	goto 0EF3
@@ -1700,7 +1700,7 @@ char nibble_to_char(uint8_t A)
 	40 C0 2C           CALL    $2CC0
 	if (VV[0x13] & 0x60)
 		goto 0ECE;
-	if (func_32E5() || !sw_cn6_debounced())
+	if (func_32E5() || !sw_paper_end_debounced())
 		goto 0EF3;
 	goto 0ECE
 0EF3:
@@ -1764,7 +1764,7 @@ void sw_online_wait(void)
 	return 0;
 
 0F5B:
-	if (!sw_cn6_debounced())
+	if (!sw_paper_end_debounced())
 		goto 0F70;
 	40 EC 32           CALL    $32EC
 	40 7D 2D           CALL    $2D7D
@@ -1800,7 +1800,7 @@ void func_0F9C(void)
 {
 	check_gate_array_input(); /* always returns 0 */
 	VV[0x14] &= 0xBF;
-	[0xC004] &= 0xEF;
+	[0xC004] &= 0xEF; /* 1110 1111 */
 	if (!(VV[0x11] & 0x40)) {
 		TXB = 0x13;
 		[0xC004] |= 0x01;
@@ -2151,10 +2151,8 @@ void func_10A8(void)
 	VV[0x25] = A;
 	HL = [0x9823];
 	[0x9923] = HL;
-	5A 12              BIT     2,VV:12
-	HL = 0xC005;
-	HL = 0xC006;
-	A = [HL];
+	if (VV[0x12] & 0x04) A = [0xC006];
+	else                 A = [0xC005];
 	40 94 12           CALL    $1294
 	VV[0x12] |= 0x80
 	VV[0x00] &= 0xFB;
@@ -4206,9 +4204,8 @@ void func_1FAE(void)
 	HL = 0x9923;
 	[HL] = EA;
 	VA = pop();
-	if (A & 0x80) HL = 0xc006;
-	else          HL = 0xc005;
-	A = [HL];
+	if (A & 0x80) A = [0xC006];
+	else          A = [0xC005];
 	return 0;
 }
 
@@ -4288,11 +4285,11 @@ void check_gate_array_input(void)
 
 	disable_interrupts();
 	EA = [0xC002];
-	A  = [0xc004];
-	[0xc004] = (A |= 0x20); /* 0010 0000 */
-	[0xc004] = (A &= 0xfe); /* 1111 1110 */
+	A  = [0xC004];
+	[0xC004] = (A |= 0x20); /* 0010 0000 */
+	[0xC004] = (A &= 0xfe); /* 1111 1110 */
 	enable_interrupts();
-	[0xc004] = (A &= 0xdf); /* 1101 1111 */
+	[0xC004] = (A &= 0xdf); /* 1101 1111 */
 
 	data_buffer_fifo_put(EAH);
 
@@ -4668,7 +4665,7 @@ void func_2313(void)
 	if (!(VV[0x40] & 0x10)) {
 		VV[0x40] = 0x00;
 		A = 0x00;
-		[0xc000] = A;
+		[0xC000] = A;
 		VV[0x3c] = A;
 		VV[0x3d] = A;
 		if (!func_2272())
@@ -4993,7 +4990,7 @@ void func_2497(void)
 	BC = [0xFFFF];
 	while (VV[0x3b]--) {
 		EA = [HL++];
-		A = [C000];
+		A = [0xC000];
 		if (A & 0x80)
 			continue;
 		EA &= BC;
@@ -5026,7 +5023,7 @@ void func_25E2(EA)
 {
 	if (!(VV[0x07] & 0x40) && !(VV[0x38] & 0x80))
 		return;
-	[C001] = EA;
+	[0xC001] = EA;
 	return;
 }
 /* always returns 0 */
@@ -5122,7 +5119,7 @@ void func_262A(void)
 /* always returns 0 */
 void func_2686(void)
 {
-	[C000] = 0x00;
+	[0xC000] = 0x00;
 	EA = DE - HL;
 	B = EAL >> 1;
 	A = VV[0x3a];
@@ -5213,7 +5210,7 @@ void func_26F8(void)
 	C = VV[0x3b];
 	EA = 0x0000;
 	do {
-		[DE++] = [C000];
+		[DE++] = [0xC000];
 		[DE++] = [HL++];
 		if (VV[0x38] & 0x02)
 			[DE++] = EA;
@@ -5324,7 +5321,7 @@ void func_27BC(void)
 	do {
 		A = [HL++];
 		B = A;
-		C = [C000];
+		C = [0xC000];
 		if (!(C & 0x80)) {
 			while (1) {
 				do {
@@ -5333,7 +5330,7 @@ void func_27BC(void)
 						break;
 					}
 					A = [HL++];
-					C = [C000];
+					C = [0xC000];
 					if (!(C & 0x80)) {
 						C = A;
 						break;
@@ -5366,7 +5363,7 @@ void func_27E8(void)
 		A = B;
 		A ^= 0xff;
 		A &= [HL++];
-		C = [C000];
+		C = [0xC000];
 		if (C & 0x80)
 			continue;
 		B = A;
@@ -5642,7 +5639,7 @@ void func_2AEA(void)
 {
 	EA = 0x0000;
 	do {
-		B = [C000];
+		B = [0xC000];
 		if (!(B & 0x80))
 			[DE++] = EA;
 	} while (A--);
@@ -5656,7 +5653,7 @@ void func_2AFA(void)
 	else              B = 0x00;
 	C = [0x984F];
 	push(BC);
-	if (!sw_cn6_debounced()) A = 0x00;
+	if (!sw_paper_end_debounced()) A = 0x00;
 	else                     A = 0x10;
 	BC = pop();
 	A |= B;
@@ -5675,7 +5672,7 @@ void func_2AFA(void)
 		VV[0x14] |= 0x02;
 2B33:
 	func_32BF(); /* always returns 0 */
-	[C007] = 0x05;
+	[0xC007] = 0x05;
 	PC |= 0x04; /* 0000 0100 */
 	delay(30);
 	PC &= 0xfb; /* 1111 1011 */
@@ -5813,7 +5810,7 @@ void func_2B5A(void)
 	func_32CF(); /* always returns 0 */
 	40 4B 2E           CALL    $2E4B
 	00                 NOP     
-	if (!sw_cn6_debounced())
+	if (!sw_paper_end_debounced())
 		goto 2C4C;
 	VV[0x13] |= 0x04
 	55 13 20           OFFIW   VV:13,$20
@@ -5836,14 +5833,14 @@ void func_2B5A(void)
 	goto 2C6D
 	5D 4F              BIT     5,VV:4F
 	return 0;
-	if (!sw_cn6_debounced())
+	if (!sw_paper_end_debounced())
 		return 0;
 	return 1;
 
 2C6D:
 	if (!(VV[0x13] & 0x04))
 		return 1;
-	if (!sw_cn6_debounced())
+	if (!sw_paper_end_debounced())
 		return 0;
 	5D 4F              BIT     5,VV:4F
 	if (!func_2E08())
@@ -5886,7 +5883,7 @@ void func_2B5A(void)
 	goto 2CD0
 	5A 13              BIT     2,VV:13
 	goto 2CBE
-	if (!sw_cn6_debounced())
+	if (!sw_paper_end_debounced())
 		goto 2CD0;
 	5D 4F              BIT     5,VV:4F
 	goto 2CDA
@@ -5950,7 +5947,7 @@ void func_2B5A(void)
 2D25:
 	func_32B9(); /* always returns 0 */
 	VV[0x14] &= 0xFD;
-	if (!sw_cn6_debounced())
+	if (!sw_paper_end_debounced())
 		goto 2D2E;
 	return 1;
 2D2E:
@@ -5965,7 +5962,7 @@ void func_2B5A(void)
 2D47:
 	59 14              BIT     1,VV:14
 	40 79 2D           CALL    $2D79
-	if (!sw_cn6_debounced())
+	if (!sw_paper_end_debounced())
 		goto 2D5B;
 	BC = 0x8AB6;
 	func_313F(); /* always returns 0 */
@@ -5974,7 +5971,7 @@ void func_2B5A(void)
 	goto 2D07
 	goto 2D5F
 2D5B:
-	if (!sw_cn6_debounced())
+	if (!sw_paper_end_debounced())
 		goto 2D5F;
 	goto 2D07
 2D5F:
@@ -6006,7 +6003,7 @@ void func_2B5A(void)
 	goto 2D9E
 
 2D91:
-	if (!sw_cn6_debounced())
+	if (!sw_paper_end_debounced())
 		goto 2D94;
 	goto 2D7D
 2D94:
@@ -6108,13 +6105,14 @@ int func_2E08(void)
 }
 
 /* 2E3A */
-int sw_cn6_debounced(void)
+int sw_paper_end_debounced(void)
 {
 	return ckbit_1(read_debounced_PA());
 }
 /* 2E3E */:
-int sw_cn6(void)
+int sw_paper_end(void)
 {
+	/* CN6 sensor (Paper-End, PE, active low) */
 	return ckbit_1(read_stable_PA());
 }
 
@@ -6137,7 +6135,7 @@ int ckbit_1(uint8_t A)
 	goto 2E60
 	5A 13              BIT     2,VV:13
 	return 1;
-	if (!sw_cn6_debounced())
+	if (!sw_paper_end_debounced())
 		goto 2E59;
 	return 1;
 2E59:
@@ -6177,13 +6175,13 @@ int ckbit_1(uint8_t A)
 	EA = 0x0000;
 	if (EA != BC)
 		return 0;
-	if (!sw_cn6_debounced())
+	if (!sw_paper_end_debounced())
 		return 0;
 	return 1;
 
 int func_2E8F(void)
 {
-	if (!sw_cn4())
+	if (!sw_release())
 		if (  VV[0x4f] & 0x20 )
 			return 0;
 	} else {
@@ -6196,8 +6194,9 @@ int func_2E8F(void)
 	return 1;
 }
 /* 2E9F */
-int sw_cn4(void)
+int sw_release(void)
 {
+	/* CN4 sensor (Release, low = tractor) */
 	if (read_stable_PA() & 0x04)
 		return 0;
 	return 1;
@@ -6303,7 +6302,7 @@ void func_2EA6(void)
 	EA = [0x03FF];
 	74 ED              DNE     EA,BC
 2F4C:
-	if (!sw_cn6())
+	if (!sw_paper_end())
 		goto 2F52;
 	goto 2FAA
 2F52:
@@ -6373,7 +6372,7 @@ void func_2FB3(void)
 int func_2FC8(void)
 {
 	func_32B9(); /* always returns 0 */
-	if (sw_cn6_debounced())
+	if (sw_paper_end_debounced())
 		return 0;
 	EA = 0x0268;
 	BC = [0x9849];
@@ -6383,7 +6382,7 @@ int func_2FC8(void)
 	BC = EA;
 	func_313F(); /* always returns 0 */
 	func_32B9(); /* always returns 0 */
-	if (!sw_cn6_debounced()) {
+	if (!sw_paper_end_debounced()) {
 		VV[0x4F] |= 0x80;
 		return 1;
 	}
@@ -6723,7 +6722,7 @@ int func_31D8(void)
 3214:
 	40 6F 32           CALL    $326F
 	enable_interrupts();
-	if (!sw_cn6())
+	if (!sw_paper_end())
 		goto 322F;
 	HL = [0x9929];
 	74 5E 80           OFFI    H,$80
@@ -6776,9 +6775,9 @@ void func_326F(void)
 {
 	if (VV[0x01] & 0x80) HL = 0x3289;
 	else                 HL = 0x3293;
-	A = [HL+[C007]];
-	[C007] = A;
-	[C007] = [HL+A];
+	A = [HL+[0xC007]];
+	[0xC007] = A;
+	[0xC007] = [HL+A];
 	return;
 }
 
@@ -6799,27 +6798,27 @@ void func_32B9(void)
 void func_32BF(void)
 {
 	func_32B9(); /* always returns 0 */
-	if (sw_cn6_debounced()) [0x9929] = 0x0166;
-	else                    [0x9929] = 0x0000;
+	if (sw_paper_end_debounced()) [0x9929] = 0x0166;
+	else                          [0x9929] = 0x0000;
 	return 0;
 }
 /* always returns 0 */
 /* 32CF */
 void func_32CF(void)
 {
-	if (!func_2E08() || !sw_cn6_debounced()) {
-		[0xC004] &= 0xBF;
+	if (!func_2E08() || !sw_paper_end_debounced()) {
+		[0xC004] &= 0xBF; /* 1011 1111 */
 		return;
 	}
 	if (func_32EC()) {
-		[0xC004] |= 0x40;
+		[0xC004] |= 0x40; /* 0100 0000 */
 		return;
 	}
 	if (!(VV[0x13] & 0xc0)) {
-		[0xC004] &= 0xBF;
+		[0xC004] &= 0xBF; /* 1011 1111 */
 		return;
 	}
-	[0xC004] |= 0x40;
+	[0xC004] |= 0x40; /* 0100 0000 */
 	return;
 }
 /* 32E5 */
@@ -6892,13 +6891,13 @@ void func_32F3(void)
 
 77B1:
 	stepper_vref(0x07);
-	[0xc008] = 0x00;
-	[0xc00b] = 0x00;
-	[0xc00a] = 0xba;
-	[0xc009] = 0xb5;
-	[0xc008] = 0x0d;
-	if (sw_cn7_debounced()) [0x991D] = 0x7B66;
-	else                    [0x991D] = 0x7B76;
+	[0xC008] = 0x00; /* 0000 0000 */
+	[0xC00B] = 0x00; /* 0000 0000 */
+	[0xC00A] = 0xba; /* 1011 1010 */
+	[0xC009] = 0xb5; /* 1011 0101 */
+	[0xC008] = 0x0d; /* 0000 1101 */
+	if (sw_home_position_debounced()) [0x991D] = 0x7B66;
+	else                              [0x991D] = 0x7B76;
 	stepper_vref(0x06);
 	VV[0x1d] = 0x03;
 	delay(25);
@@ -6909,7 +6908,7 @@ void func_32F3(void)
 	delay(75);
 	VV[0x00] |= 0x80;
 /* 77F7: */
-	if (!sw_cn7_debounced()) {
+	if (!sw_home_position_debounced()) {
 		[0x9917] = 0x03E3;
 		func_7875(); /* always returns 0 */
 	}
@@ -6923,7 +6922,7 @@ void func_32F3(void)
 	VV[0x1d] = 0x14;
 7823:
 	func_7845(); /* always returns 0 */
-	if (!sw_cn7())
+	if (!sw_home_position())
 		goto 782C;
 	55 00 02           OFFIW   VV:00,$02
 	goto 7831;
@@ -6948,7 +6947,7 @@ void func_7845(void)
 	VV[0x00] |= 0x02;
 	func_7B4D(); /* always returns 0 */
 	delay(3);
-	if (!sw_cn7())
+	if (!sw_home_position())
 		VV[0x00] &= 0xfd;
 	return 0;
 }
@@ -6957,7 +6956,7 @@ void func_7845(void)
 /* 7851 */
 int func_7851(void)
 {
-	A = [C008];
+	A = [0xC008];
 	HL = 0x7860;
 	for (int i = 0; i < 5; i++)
 		if (A == [HL++])
@@ -7140,9 +7139,8 @@ void func_798D(void)
 	func_7BBE(); /* always returns 0 */
 	if ((VV[0x00] & 0x10) && (VV[0x00] & 0x04))
 		VV[0x00] ^= 0x40;
-	if (VV[0x00] & 0x40) HL = 0x7B76;
-	else                 HL = 0x7B66;
-	[991D] = HL;
+	if (VV[0x00] & 0x40) [0x991D] = 0x7B76;
+	else                 [0x991D] = 0x7B66;
 	switch (VV[0x1F]) {
 	case 0: [0x991F] = 0x7C6E; break;
 	case 1: [0x991F] = 0x7C7E; break;
@@ -7264,14 +7262,14 @@ void func_7A99(void)
 	if (!func_7B1D())
 		return 0;
 	if (VV[0x00] & 0x80) {
-		if ((!(VV[0x00] & 0x40) && !sw_cn7()) ||
-		    ( (VV[0x00] & 0x40) &&  sw_cn7()))
+		if ((!(VV[0x00] & 0x40) && !sw_home_position()) ||
+		    ( (VV[0x00] & 0x40) &&  sw_home_position()))
 			func_7A6A(); /* always returns 0 */
 		return 0;
 	}
 	if (VV[0x0f] & 0x10)
 		return 0;
-	if (!sw_cn7()) {
+	if (!sw_home_position()) {
 		VV[0x00] &= 0xFD;
 		return 0;
 	}
@@ -7363,10 +7361,10 @@ int func_7B1D(void)
 void func_7B4D(void)
 {
 	HL = [0x991D];
-	A  = [C008];
+	A  = [0xC008];
 	if (!(VV[0x00] & 0x20))
-		[C008] = [HL + A];
-	[C008] = [HL + A];
+		[0xC008] = [HL + A];
+	[0xC008] = [HL + A];
 	check_voltage(); /* either returns 0 or resets */
 	return 0;
 }
@@ -7375,7 +7373,7 @@ void func_7B4D(void)
 7B76: DW: 0D 0D 0D 0D 0D 0D 0E 0D 0C 0D 0D 0F 06 08 0B 05
 
 /* 7B86 */
-int sw_cn7_debounced(void)
+int sw_home_position_debounced(void)
 {
 	do {
 		A = read_stable_PA();
@@ -7387,8 +7385,9 @@ int sw_cn7_debounced(void)
 	return 1;
 }
 /* 7B95 */
-int sw_cn7(void)
+int sw_home_position(void)
 {
+	/* CN7 (Home Position, HP, active low) */
 	if (read_stable_PA() & 0x01)
 		return 0;
 	return 1;
