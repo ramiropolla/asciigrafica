@@ -27,6 +27,16 @@ uint16_t *data_buffer_rptr = 0x9913;
 /* VV[0x11] */
 #define COMM_SERIAL      0x80
 
+/* [0xC004] */
+#define C004_0           (1<<0)
+#define C004_1           (1<<1)
+#define C004_2           (1<<2)
+#define C004_3           (1<<3)
+#define C004_4           (1<<4)
+#define C004_5           (1<<5)
+#define C004_6           (1<<6)
+#define C004_7           (1<<7) /* seems like some kind of reset */
+
 0000: goto _start;                     /* reset */
 0004: goto irq_nmi;                    /* IRQ 0 */ /* INTNMI */
 0008: exx();                           /* IRQ 1 */ /* INTFT0, INTFT1 */
@@ -173,7 +183,7 @@ _start:
 	if (A < 0xCA || skit(NMI))
 		reset();
 
-	[0xC004] = 0x81;
+	[0xC004] = C004_7 | C004_0; /* 1000 0001 */
 	memset(0xff00, 0xFF, 0x100);
 	memset(0xff00, 0x00, 0x100);
 	if ([0xffff] != 0x00)
@@ -207,7 +217,7 @@ _start:
 	40 B1 77           CALL    $77B1
 	/* DEBUG DOESN'T REACH HERE */
 	func_2AFA(); /* always returns 0 */
-	func_19A0(); /* always returns 0 */
+	clear_0xff00_0xff48(); /* always returns 0 */
 0195:
 	9D                 CALT    ($00BA)
 	if (VV[0x4f] & 0x08) [0x993D] = 0x4C80;
@@ -1306,7 +1316,7 @@ void check_voltage(void)
 			VV[VOLTAGE_STATUS] |= UNDER_VOLTAGE_1; /* 0000 0001 */
 			func_0C48(); /* always returns 0 */
 			write_all_93c06(); /* always returns 0 */
-			[0xC004] = 0xC3;
+			[0xC004] = C004_7 | C004_6 | C004_1 | C004_0; /* 1100 0011 */
 			reset();
 		}
 		VV[VOLTAGE_STATUS] &= ~UNDER_VOLTAGE_2; /* 1111 1101 */
@@ -1326,7 +1336,7 @@ void irq_nmi(void)
 		VV[VOLTAGE_STATUS] |= UNDER_VOLTAGE_1;
 		func_0C48(); /* always returns 0 */
 		write_all_93c06(); /* always returns 0 */
-		[0xC004] = 0xC3;
+		[0xC004] = C004_7 | C004_6 | C004_1 | C004_0; /* 1100 0011 */
 		reset();
 	}
 	enable_interrupts();
@@ -1339,7 +1349,7 @@ void func_0C48(void)
 {
 	MKL    = 0xff; /* mask all interrupts */
 	MKH    = 0xff; /* mask all interrupts */
-	[0xC005] = 0x0000; /* Latches (and inverts) the data for pin 9 of the printhead. */
+	[0xC005] = 0x0000; /* clears all pins of the printhead. */
 	[0xC007] = 0x0000; /* Latches the phase data for the CR motor. */
 	EOM   = b10011001; /* to set LVx, output LVx */
 	VV[0x0f] &= 0x3f; /* 0011 1111 */
@@ -1769,15 +1779,15 @@ void sw_online_wait(void)
 	goto 0EC2;
 0F70:
 	VV[0x14] |= 0x40; /* 0100 0000 */
-	[0xC004] &= 0xB3;
+	[0xC004] &= ~(C004_6 | C004_3 | C004_2); /* 1011 0011 */
 	if (VV[0x03] & SELF_TEST_MODE)
 		return 0;
-	[0xC004] |= 0x10;
+	[0xC004] |= C004_4; /* 0001 0000 */
 	if (!(VV[0x11] & COMM_SERIAL)) {
 		if ([0xC002] & 0x80)
 			return 0;
-		[0xC004] |= 0x20;
-		[0xC004] &= 0xDF;
+		[0xC004] |=  C004_5; /* 0010 0000 */
+		[0xC004] &= ~C004_5; /* 1101 1111 */
 	} else {
 		if (VV[0x11] & 0x40)
 			return 0;
@@ -1785,8 +1795,8 @@ void sw_online_wait(void)
 		A = 0x11;
 		TXB = A;
 	}
-	[0xC004] &= 0xFE;
-	[0xC004] |= 0x02;
+	[0xC004] &= ~C004_0; /* 1111 1110 */
+	[0xC004] |=  C004_1; /* 0000 0010 */
 	return 0;
 
 /* always returns 0 */
@@ -1794,15 +1804,15 @@ void func_0F9C(void)
 {
 	check_gate_array_input(); /* always returns 0 */
 	VV[0x14] &= 0xBF; /* 1011 1111 */
-	[0xC004] &= 0xEF; /* 1110 1111 */
+	[0xC004] &= ~C004_4; /* 1110 1111 */
 	if (!(VV[0x11] & 0x40)) {
 		TXB = 0x13;
-		[0xC004] |= 0x01;
+		[0xC004] |= C004_0; /* 0000 0001 */
 		delay(1);
 	}
-	if ((uint16_t)[0xC004] & 0x40) A = 0x0c;
-	else                           A = 0x04;
-	[0xC004] |= A;
+	                    /* 0100 0000 */
+	if ((uint16_t)[0xC004] & C004_6) [0xC004] |= C004_2 | C004_3; /* 0000 1100 */
+	else                             [0xC004] |= C004_2;          /* 0000 0100 */
 	return 0;
 }
 
@@ -1969,15 +1979,14 @@ void beep_60ms(void)
 	return 0;
 }
 
-109B:
-	HL = 0xC004;
-	A &= [HL];
-	goto 10A6;
-10A1: HL = 0xC004;
-	A |= [HL];
-10A6:
-	[HL] = A;
-	return;
+/* 109B */
+{
+	[0xC004] &= A;
+}
+/* 10A1 */
+{
+	[0xC004] |= A;
+}
 
 /* always returns 0 */
 /* 10A8 */
@@ -2117,8 +2126,8 @@ void func_10A8(void)
 	EA <<= 1;
 119B:
 	HL = 0x0000;
-	74 EF              DNE     EA,HL
-	return 0;
+	if (EA == HL)
+		return 0;
 	push(EA);
 	8E                 CALT    ($009C)
 	EA = pop();
@@ -2372,8 +2381,8 @@ void func_1377(void)
 	return 0;
 	EA = 0x9A79;
 	HL = [0x9939];
-	74 EF              DNE     EA,HL
-	return 0;
+	if (EA == HL)
+		return 0;
 	HL--;
 	A = [HL];
 	57 01              OFFI    A,$01
@@ -2940,8 +2949,8 @@ XXXXXX
 1779: B = 0xD8;
 177B: EA = A * B;
 177D: HL = 0x0000;
-1780: 74 EF              DNE     EA,HL
-1782: return 0;
+	if (EA == HL)
+		return 0;
 1783: func_32F3(); /* always returns 0 */
 1786: [HL] = EA;
 1788: HL = 0x9931;
@@ -3065,8 +3074,8 @@ XXXXXX
 1854: A = VV[0x2C];
 1856: EA = A * B;
 1858: BC = 0x0000;
-185B: 74 ED              DNE     EA,BC
-185D: return 0;
+	if (EA == BC)
+		return 0;
 185E: BC = EA;
 185F: goto 2B88;
 1862: 55 05 80           OFFIW   VV:05,$80
@@ -3242,14 +3251,10 @@ XXXXXX
 
 /* always returns 0 */
 /* 19A0 */
-void func_19A0(void)
+void clear_0xff00_0xff48(void)
 {
-	HL = 0xFF00;
-	B  = 0x0c;
-	func_19DD(); /* always returns 0 */
-	HL = 0xFF48;
-	B  = 0x1d;
-	func_19DD(); /* always returns 0 */
+	clear_5_lines(0xFF00, 12); /* always returns 0 */
+	clear_5_lines(0xFF48, 29); /* always returns 0 */
 	return 0;
 }
 
@@ -3283,14 +3288,13 @@ void func_19A0(void)
 
 /* always returns 0 */
 /* 19DD */
-void func_19DD(void)
+void clear_5_lines(uint16_t HL, int stride)
 {
-	A = 0x00;
-	C = 0x05;
-	do {
-		[HL] = A;
-		HL += B;
-	} while (C--);
+	[HL + 0 * stride] = 0x00;
+	[HL + 1 * stride] = 0x00;
+	[HL + 2 * stride] = 0x00;
+	[HL + 3 * stride] = 0x00;
+	[HL + 4 * stride] = 0x00;
 	return 0;
 }
 
@@ -3872,45 +3876,36 @@ int func_1D79(void)
 	return r;
 }
 
-1D85:
-	HL = [0x9925];
-	[0xC005] = HL;
-	64 83 07           MVI     EOM,$07
+/* 1D85 */
+etimer_2:
+	[0xC005] = [0x9925]; /* fires all pins of the printhead. */
+	EOM = 0x07;
 	A = CR1;
-	EA = 0x0000;
-	EAL = A;
+	EA = 0x0000 | A;
 	EA <<= 1;
-	37 DB              LTI     A,$DB
-	goto 1DA2
-	EA += A;
-	BC = EA;
-	EA = 0x0434;
-	goto 1DAB
-1DA2:
-	37 FB              LTI     A,$FB
-	beep_and_hang(5, 1); /* HANG, never returns */
-
-	BC = EA;
-	EA = 0x035E;
-1DAB:
+	if (A >= 0xDB) {
+		if (A >= 0xFB)
+			beep_and_hang(5, 1); /* HANG, never returns */
+		BC = EA;
+		EA = 0x035E;
+	} else {
+		EA += A;
+		BC = EA;
+		EA = 0x0434;
+	}
 	EA -= BC;
 	BC = EA;
 	EA = ECNT;
 	EA += BC;
 	BC = [0x9923];
-	74 BD              DLT     EA,BC
-	EA -= BC;
+	if (EA >= BC)
+		EA -= BC;
 	ETM0 = EA;
-	5D 10              BIT     5,VV:10
-	goto 1DCC
-	HL = [0x9923];
-	EA = HL;
-	ETM1 = EA;
-	48 46              SKIT    FE1
-	00                 NOP     
-	VV[FLAGS_1] &= 0xDF; /* 1101 1111 */
-
-1DCC:
+	if (VV[0x10] & 0x20) {
+		ETM1 = [0x9923];
+		skit(FE1);
+		VV[FLAGS_1] &= 0xDF; /* 1101 1111 */
+	}
 	exx();
 	exa();
 	enable_interrupts();
@@ -3919,9 +3914,9 @@ int func_1D79(void)
 	push(VA);
 	push(BC);
 	push(DE);
-	40 22 23           CALL    $2322
-	40 46 1E           CALL    $1E46
-	40 5E 1E           CALL    $1E5E
+	if (!func_2322())
+		func_1E46(); /* always returns 0 */
+	func_1E5E(); /* always returns 0 */
 	DE = pop();
 	BC = pop();
 	VA = pop();
@@ -3929,47 +3924,38 @@ int func_1D79(void)
 	EA = pop();
 	return; /* FROM INTERRUPT */
 
-1DE3:
-	HL = [0x9925];
-	[0xC005] = HL;
-	64 83 07           MVI     EOM,$07
+/* 1DE3 */
+etimer_3:
+	[0xC005] = [0x9925]; /* fires all pins of the printhead. */
+	EOM = 0x07;
 	A = CR1;
-	EA = 0x0000;
-	EAL = A;
+	EA = 0x0000 | A;
 	EA <<= 1;
-	37 DB              LTI     A,$DB
-	goto 1E05
-	27 D0              GTI     A,$D0
-	EA = 0x01A0;
-	EA += A;
-	BC = EA;
-	EA = 0x0410;
-	goto 1E0E
-1E05:
-	37 FB              LTI     A,$FB
-	beep_and_hang(5, 1); /* HANG, never returns */
-
-	BC = EA;
-	EA = 0x0339;
-1E0E:
+	if (A >= 0xDB) {
+		if (A >= 0xFB)
+			beep_and_hang(5, 1); /* HANG, never returns */
+		BC = EA;
+		EA = 0x0339;
+	} else {
+		if (A <= 0xD0)
+			EA = 0x01A0;
+		EA += A;
+		BC = EA;
+		EA = 0x0410;
+	}
 	EA -= BC;
 	BC = EA;
 	EA = ECNT;
 	EA += BC;
 	BC = [0x9923];
-	74 BD              DLT     EA,BC
-	EA -= BC;
+	if (EA >= BC)
+		EA -= BC;
 	ETM0 = EA;
-	5D 10              BIT     5,VV:10
-	goto 1E2F
-	HL = [0x9923];
-	EA = HL;
-	ETM1 = EA;
-	48 46              SKIT    FE1
-	00                 NOP     
-	VV[FLAGS_1] &= 0xDF; /* 1101 1111 */
-
-1E2F:
+	if (VV[0x10] & 0x20) {
+		ETM1 = [0x9923];
+		skit(FE1);
+		VV[FLAGS_1] &= 0xDF; /* 1101 1111 */
+	}
 	exx();
 	exa();
 	enable_interrupts();
@@ -3978,9 +3964,9 @@ int func_1D79(void)
 	push(VA);
 	push(BC);
 	push(DE);
-	40 22 23           CALL    $2322
-	40 46 1E           CALL    $1E46
-	40 5E 1E           CALL    $1E5E
+	if (!func_2322())
+		func_1E46(); /* always returns 0 */
+	func_1E5E(); /* always returns 0 */
 	DE = pop();
 	BC = pop();
 	VA = pop();
@@ -3988,84 +3974,57 @@ int func_1D79(void)
 	EA = pop();
 	return; /* FROM INTERRUPT */
 
-1E46:
+/* always returns 0 */
+/* 1E46 */
+void func_1E46(void)
+{
 	MKL |= 0x40; /* 0100 0000 */ /* mask INTE1 */
-	48 45              SKIT    FE0
-	00                 NOP     
+	skit(FE0);
 	MKL &= 0xdf; /* 1101 1111 */ /* activate INTE0 */
-	[0x981B] = 0x1E78;
+	[0x981B] = etimer_1;
 	[0x9818] = timer1_2;
 	return 0;
-1E5E:
-	55 10 02           OFFIW   VV:10,$02
-	30 29              DCRW    VV:29
-	return 0;
+}
+/* always returns 0 */
+/* 1E5E */
+void func_1E5E(void)
+{
+	if ((!VV[0x10] & 0x02) || VV[0x29]--)
+		return 0;
 	VV[0x29] = 0x02;
-	HL = [0x9923];
-	EA = HL;
-	5F 12              BIT     7,VV:12
-	goto 1E74
-	EA++;
-	5E 12              BIT     6,VV:12
-	EA++;
-	goto 1E75
-1E74:
-	EA--;
-1E75:
+	EA = [0x9923];
+	if (!(VV[0x10] & 0x80)) {
+		EA--;
+	} else {
+		EA++;
+		if (!(VV[0x12] & 0x40))
+			EA++;
+	}
 	ETM1 = EA;
 	return 0;
-1E78:
+}
+/* 1E78 */
+void __attribute__((interrupt)) etimer_1(void)
+{
 	MKL |= 0x20; /* 0010 0000 */ /* mask INTE0 */
-	64 83 99           MVI     EOM,$99
-	HL = 0x0000;
-	[0xC005] = HL;
+	EOM = 0x99;
+	[0xC005] = 0x0000; /* clears all pins of the printhead. */
 	VV[FLAGS_1] &= 0x7D; /* 0111 1101 */
 	VV[0x0F] &= 0xFD; /* 1111 1101 */
 	exx();
 	exa();
 	enable_interrupts();
 	return; /* FROM INTERRUPT */
-
-1E8F:
-	BC = [0x9921];
-	EA = BC;
-	BC = [0x9927];
-	EA += BC;
-	ETM1 = EA;
-	EA++;
-	EA++;
-	ETM0 = EA;
-	55 06 10           OFFIW   VV:06,$10
-	goto 1EB3
-	[0x981B] = 0x1D85;
-	[0x9818] = timer1_1;
-	goto 1EC1
-1EB3:
-	[0x981B] = 0x1DE3;
-	[0x9818] = timer1_1;
-1EC1:
-	ETMM = 0x0c; /* 0000 1100 */ /*  */
-	VV[FLAGS_1] |= 0x20; /* 0010 0000 */
-	48 46              SKIT    FE1
-	00                 NOP     
-	48 45              SKIT    FE0
-	00                 NOP     
-	40 22 23           CALL    $2322
-	00                 NOP     
-	MKL &= 0xbf; /* 1011 1111 */ /* activate INTE1 */
-	VV[FLAGS_1] |= 0x80; /* 1000 0000 */
-	return 0;
+}
 
 /* always returns 0 */
 /* 1ED9 */
 void func_1ED9(void)
 {
 	func_1F11(); /* always returns 0 */
-	HL = 0x9000;
-	[0x995D] = HL;
-	[0x995F] = HL;
-	HL = 0x0000;
-	[0x9925] = HL;
+	[0x995D] = 0x9000;
+	[0x995F] = 0x9000;
+	[0x9925] = 0x0000;
 	if (VV[0x00] & 0x04)
 		func_2AD2(); /* always returns 0 */
 	if (VV[0x09] & 0x02) A = 0x1E;
@@ -4092,8 +4051,7 @@ void func_1F11(void)
 {
 	HL = [0x9933];
 	if (VV[0x00] & 0x04) {
-		DE = [0x9935];
-		EA = DE;
+		EA = [0x9935];
 		HL -= 3;
 		[0x9935] = HL;
 		HL = EA - 3;
@@ -4101,7 +4059,6 @@ void func_1F11(void)
 	[0x9937] = HL;
 	return 0;
 }
-
 /* always returns 0 */
 /* 1F2D */
 void func_1F2D(void)
@@ -4284,10 +4241,10 @@ void check_gate_array_input(void)
 	disable_interrupts();
 	EA = [0xC002];
 	A  = [0xC004];
-	[0xC004] = (A |= 0x20); /* 0010 0000 */
-	[0xC004] = (A &= 0xfe); /* 1111 1110 */
+	[0xC004] = (A |=  C004_5); /* 0010 0000 */
+	[0xC004] = (A &= ~C004_0); /* 1111 1110 */
 	enable_interrupts();
-	[0xC004] = (A &= 0xdf); /* 1101 1111 */
+	[0xC004] = (A &= ~C004_5); /* 1101 1111 */
 
 	data_buffer_fifo_put(EAH);
 
@@ -4297,7 +4254,7 @@ void check_gate_array_input(void)
 
 	if (*data_buffer_size == 0x0000) {
 		VV[0x11] |= DATA_BUFFER_FULL;
-		[0xC004] &= 0xFD; /* 1111 1101 */
+		[0xC004] &= ~C004_1; /* 1111 1101 */
 	}
 	enable_interrupts();
 	return 0;
@@ -4326,7 +4283,7 @@ void __attribute__((interrupt)) irq_serial(void)
 
 		if (*data_buffer_size == 0x0100) {
 			VV[0x11] |= 0x40;
-			[0xC004] |= 0x01;
+			[0xC004] |= C004_0; /* 0000 0001 */
 			TXB = 0x13;
 		}
 	}
@@ -4365,7 +4322,7 @@ int func_2127(void)
 	VV[0x11] &= ~DATA_BUFFER_FULL;
 
 	if (!(VV[0x11] & COMM_SERIAL))
-		[0xC004] |= 0x02;
+		[0xC004] |= C004_1; /* 0000 0010 */
 
 	VV[PRINT_THIS_CHAR] = data_buffer_fifo_get();
 
@@ -4374,8 +4331,8 @@ int func_2127(void)
 	if ((VV[0x11] & 0x40) && *data_buffer_size == 0x0210) {
 		VV[0x11] &= 0xbf; /* 1011 1111 */
 		TXB = 0x11;
-		[0xC004] &= 0xFE;
-		[0xC004] |= 0x02;
+		[0xC004] &= ~C004_0; /* 1111 1110 */
+		[0xC004] |=  C004_1; /* 0000 0010 */
 	}
 
 	func_2FE9(); /* always returns 0 */
@@ -4614,43 +4571,39 @@ void func_2313(void)
 	return 0;
 }
 
-2322:
+/* 2322 */
+int func_2322(void)
+{
 	if (VV[0x12] & 0x80) {
 		DE = [0x9941];
-		EA = 0x0000;
-		74 EE              DNE     EA,DE
-		return 0;
+		if (!DE)
+			return 0;
 		DE--;
 		[0x9941] = DE;
 		func_2127(); /* ignore rets, there's a nop after this */
-		EA = 0x0000;
-		EAH = A;
+		EA = 0x0000 | (A<<8);
 		if (VV[0x12] & 0x08) {
 			push(EA);
 			func_2127(); /* ignore rets, there's a nop after this */
 			EA = pop();
 			EAL = A;
 		}
-		HL = 0x9925;
-		[HL] = EA;
-		return 1;
+		[0x9925] = EA;
+	} else {
+		DE = [0x995B];
+		EA = [DE];
+		if (EA == 0x0400)
+			return 0;
+		EA++;
+		[DE] = EA;
+		DE = [0x995F];
+		[0x9925] = [DE];
+		[DE++] = 0x0000;
+		func_242B(); /* always returns 0 */
+		[0x995F] = DE;
 	}
-	DE = [0x995B];
-	EA = [DE];
-	HL = 0x0400;
-	74 EF              DNE     EA,HL
-	return 0;
-	EA++;
-	[DE] = EA;
-	DE = [0x995F];
-	EA = [DE];
-	HL = 0x9925;
-	[HL] = EA;
-	EA = 0x0000;
-	[DE++] = EA;
-	func_242B(); /* always returns 0 */
-	[0x995F] = DE;
 	return 1;
+}
 
 234C:
 	VV[0x40] &= 0xBF;
@@ -4662,10 +4615,9 @@ void func_2313(void)
 	}
 	if (!(VV[0x40] & 0x10)) {
 		VV[0x40] = 0x00;
-		A = 0x00;
-		[0xC000] = A;
-		VV[0x3c] = A;
-		VV[0x3d] = A;
+		[0xC000] = 0x00;
+		VV[0x3c] = 0x00;
+		VV[0x3d] = 0x00;
 		if (!func_2272())
 			return 0;
 		HL = 0x9837;
@@ -4851,8 +4803,7 @@ void func_2497(void)
 }
 
 24A0:
-	HL = 0x9937;
-	EA = [HL];
+	EA = [0x9937];
 	if (VV[0x00] & 0x04) {
 		EA += 3;
 	} else {
@@ -4988,8 +4939,7 @@ void func_2497(void)
 	BC = [0xFFFF];
 	while (VV[0x3b]--) {
 		EA = [HL++];
-		A = [0xC000];
-		if (A & 0x80)
+		if ([0xC000] & 0x80)
 			continue;
 		EA &= BC;
 		[DE++] = EA;
@@ -5020,9 +4970,9 @@ void func_25C9(uint8_t A)
 void func_25E2(EA)
 {
 	if (!(VV[0x07] & 0x40) && !(VV[0x38] & 0x80))
-		return;
+		return 0;
 	[0xC001] = EA;
-	return;
+	return 0;
 }
 /* always returns 0 */
 void func_25EF(void)
@@ -5183,35 +5133,34 @@ void func_26DB(void)
 	1F
 
 /* always returns 0 */
+/* 26ec */
 void func_26EC(void)
 {
 	if (VV[0x39] & 0x40)
 		goto 2723;
 	if (VV[FLAGS_1] & 0x40) /* 0100 0000 */
 		HL = EA;
-	EA = 0x99ED;
-	func_26F8(); /* always returns 0 */
+	func_26F8(0x99ED); /* always returns 0 */
 	return 0;
 }
 /* always returns 0 */
-void func_26F8(void)
+/* 26f8 */
+void func_26F8(uint16_t EA)
 {
 	[0xC000] = 0x00;
 	if (B & 0x80) {
-		C = 0x01;
+		[0xC001] = [HL++];
+		[0xC002] = [HL++];
 		if (!(VV[0x38] & 0x02))
-			C = 0x02;
-		DE = 0xC001;
-		do { [DE++] = [HL++] } while (C--);
+			[0xC003] = [HL++];
 	}
 	DE = EA;
 	C = VV[0x3b];
-	EA = 0x0000;
 	do {
 		[DE++] = [0xC000];
 		[DE++] = [HL++];
 		if (VV[0x38] & 0x02)
-			[DE++] = EA;
+			[DE++] = 0x0000;
 	} while (C--);
 	return 0;
 }
@@ -5219,12 +5168,10 @@ void func_26F8(void)
 2723:
 	push(BC);
 	push(EA);
-	EA = 0x9965;
-	func_26F8(); /* always returns 0 */
+	func_26F8(0x9965); /* always returns 0 */
 	HL = pop();
 	BC = pop();
-	EA = 0x99ED;
-	func_26F8(); /* always returns 0 */
+	func_26F8(0x99ED); /* always returns 0 */
 	HL = 0x9965;
 	DE = 0x99ED;
 	C = [0x983B];
@@ -5667,7 +5614,7 @@ void func_2AFA(void)
 			VV[0x14] |= 0x02;
 	}
 	func_32BF(); /* always returns 0 */
-	[0xC007] = 0x05;
+	[0xC007] = 0x05; /* 0000 0101 */
 	PC |= 0x04; /* 0000 0100 */
 	delay(30);
 	PC &= 0xfb; /* 1111 1011 */
@@ -6219,8 +6166,8 @@ void func_2EA6(void)
 	DE = EA;
 2EBE:
 	EA = [HL];
-	74 EE              DNE     EA,DE
-	goto 2EBE
+	if (EA == DE)
+		goto 2EBE;
 	if (!(VV[0x4f] & 0x10))
 		goto 2EAE;
 	HL = [0x990F];
@@ -6239,8 +6186,8 @@ void func_2EA6(void)
 	DE = EA;
 2EE3:
 	EA = [HL];
-	74 EE              DNE     EA,DE
-	goto 2EE3
+	if (EA == DE)
+		goto 2EE3;
 	if (VV[0x4f] & 0x10)
 		goto 2ED2;
 	40 F0 2E           CALL    $2EF0
@@ -6310,8 +6257,8 @@ void func_2EA6(void)
 		BC = 0x0000;
 	[0x9A75] = BC;
 	EA = 0x0000;
-	74 ED              DNE     EA,BC
-	return 1;
+	if (EA == BC)
+		return 1;
 	55 13 10           OFFIW   VV:13,$10
 	return 1;
 	EA = 0x0000;
@@ -6359,7 +6306,7 @@ void func_2FB3(void)
 	EA = [0x03FF];
 	if (EA != BC)
 		return 0;
-	[0xC004] ^= 0x10;
+	[0xC004] ^= C004_4; /* 0001 0000 */
 	return 0;
 }
 /* 2FC8 */
@@ -6397,15 +6344,12 @@ void func_2FEF(void)
 {
 	if (!(VV[0x13] & 0x10))
 		return 0;
-	VV[0x13] &= 0xEF;
-	BC = 0x0000;
-	[0x9A75] = BC;
-	A = [0xC004];
-	A |= 0x10;
-	[0xC004] = A;
+	VV[0x13] &= 0xEF; /* 1110 1111 */
+	[0x9A75] = 0x0000;
+	[0xC004] |= C004_4; /* 0001 0000 */
 	if (!(VV[0x13] & 0x08))
 		return 0;
-	VV[0x13] &= 0xF7;
+	VV[0x13] &= 0xF7; /* 1111 0111 */
 	if (!(VV[0x4f] & 0x20)) A = 0x24;
 	else                    A = 0x0C;
 	func_3012(); /* always returns 0 */
@@ -6639,7 +6583,7 @@ void func_313F(void)
 		ETMM = 0x04; /* 0000 0100 */ /*  */
 		disable_interrupts();
 		ETM0 = ECNT + 100;
-		[0x981B] = 0x31F5;
+		[0x981B] = etimer_4;
 		IRR &= ~FE0; /* clear FE0 */
 		MKL &= 0xdf; /* 1101 1111 */ /* activate INTE0 */
 	}
@@ -6692,7 +6636,8 @@ int func_31D8(void)
 	else         return 1;
 }
 
-31F5:
+/* 31F5 */
+etimer_4:
 	exx();
 	exa();
 	push(EA);
@@ -6701,70 +6646,69 @@ int func_31D8(void)
 	push(HL);
 	EA = ECNT;
 	push(EA);
-	5D 01              BIT     5,VV:01
-	goto 3214
+	if (!(VV[0x01] & 0x20))
+		goto 3214;
 	enable_interrupts();
-	if (!(PC & 0x04))
-		goto 320B;
-	PC &= 0xfb; /* 1111 1011 */
-	goto 325A;
-320B:
+	if (PC & 0x04) {
+		PC &= 0xfb; /* 1111 1011 */
+		goto 325A;
+	}
 	MKL |= 0x20; /* 0010 0000 */ /* mask INTE0 */
 	VV[0x01] &= 0xDF;
 	EA = pop();
-	goto 326A
-3214:
-	40 6F 32           CALL    $326F
-	enable_interrupts();
-	if (!sensor_paper_end())
-		goto 322F;
-	HL = [0x9929];
-	74 5E 80           OFFI    H,$80
-	HL = 0x7FFF;
-	HL++;
-	5F 01              BIT     7,VV:01
-	goto 3232;
-	HL--;
-	HL--;
-	74 5E 80           OFFI    H,$80
-322F:
-	HL = 0x0000;
-3232:
-	[0x9929] = HL;
-	HL = 0x990F;
-	[HL]--;
-	BC = 0x0000;
-	74 FD              DEQ     EA,BC
-	goto 3246
-	VV[0x01] |= 0x20
-	VV[0x01] &= 0xED;
-3246:
-	5B 01              BIT     3,VV:01
-	goto 3257
-	BC = [0x0004];
-	74 ED              DNE     EA,BC
-	VV[0x01] |= 0x02
-	65 27 06           NEIW    VV:27,$06
-	VV[0x01] &= 0xBF;
-3257:
-	55 01 62           OFFIW   VV:01,$62
-325A:
-	30 27              DCRW    VV:27
-	A = VV[0x27];
-	48 25              SLL     A
-	HL = 0x32A3;
-	EA = [HL + A];
-	HL = pop();
-	EA += HL;
-	ETM0 = EA;
-326A:
 	HL = pop();
 	BC = pop();
 	VA = pop();
 	EA = pop();
 	return; /* FROM INTERRUPT */
 
-326F:
+3214:
+	func_326F(); /* always returns 0 */
+	enable_interrupts();
+	if (!sensor_paper_end()) {
+		HL = 0x0000;
+		goto 3232;
+	}
+	HL = [0x9929];
+	if (H & 0x80)
+		HL = 0x7FFF;
+	HL++;
+	if (!(VV[0x01] & 0x80))
+		goto 3232;
+	HL--;
+	HL--;
+	if (H & 0x80)
+		HL = 0x0000;
+3232:
+	[0x9929] = HL;
+	[0x990F]--;
+	if (EA == 0x0000) {
+		VV[0x01] |= 0x20; /* 0010 0000 */
+		VV[0x01] &= 0xED; /* 1110 1101 */
+	}
+	if (!(VV[0x01] & 0x08)) {
+		if (EA == 0x0004)
+			VV[0x01] |= 0x02; /* 0000 0010 */
+		if (VV[0x27] == 0x06)
+			VV[0x01] &= 0xBF; /* 1011 1111 */
+	}
+	55 01 62           OFFIW   VV:01,$62
+325A:
+	VV[0x27]--;
+	A = VV[0x27] << 1;
+	HL = 0x32A3;
+	EA = [HL + A];
+	HL = pop();
+	EA += HL;
+	ETM0 = EA;
+	HL = pop();
+	BC = pop();
+	VA = pop();
+	EA = pop();
+	return; /* FROM INTERRUPT */
+
+/* always returns 0 */
+/* 326F */
 void func_326F(void)
 {
 	if (VV[0x01] & 0x80) HL = 0x3289;
@@ -6772,7 +6716,7 @@ void func_326F(void)
 	A = [HL+[0xC007]];
 	[0xC007] = A;
 	[0xC007] = [HL+A];
-	return;
+	return 0;
 }
 
 3289: DW: 09 05 0A 09 06 04 02 09 09 01 08 09 06 09 05 01
@@ -6801,18 +6745,18 @@ void func_32BF(void)
 void func_32CF(void)
 {
 	if (!func_2E08() || !sensor_paper_end_debounced()) {
-		[0xC004] &= 0xBF; /* 1011 1111 */
+		[0xC004] &= ~C004_6; /* 1011 1111 */
 		return;
 	}
 	if (func_32EC()) {
-		[0xC004] |= 0x40; /* 0100 0000 */
+		[0xC004] |= C004_6; /* 0100 0000 */
 		return;
 	}
 	if (!(VV[0x13] & 0xc0)) {
-		[0xC004] &= 0xBF; /* 1011 1111 */
+		[0xC004] &= ~C004_6; /* 1011 1111 */
 		return;
 	}
-	[0xC004] |= 0x40; /* 0100 0000 */
+	[0xC004] |= C004_6; /* 0100 0000 */
 	return;
 }
 /* 32E5 */
@@ -6883,7 +6827,10 @@ void func_32F3(void)
 3531: 7294 72d9 734c 73bf 7432 74b4 7533 757a
 3541: 75a5 75ec 7639 76c8 771b 774a 777d
 
-77B1:
+/* always returns 0 */
+/* 77B1 */
+void func_77b1(void)
+{
 	stepper_vref(0x07);
 	[0xC008] = 0x00; /* 0000 0000 */
 	[0xC00B] = 0x00; /* 0000 0000 */
@@ -6914,25 +6861,19 @@ void func_32F3(void)
 	stepper_vref(0x06);
 	delay(6);
 	VV[0x1d] = 0x14;
-7823:
-	func_7845(); /* always returns 0 */
-	if (!sensor_home_position())
-		goto 782C;
-	if (VV[0x00] & 0x02)
-		goto 7831;
-782C:
-	30 1D              DCRW    VV:1D
-	goto 7823
+	do {
+		func_7845(); /* always returns 0 */
+		if (sensor_home_position() && (VV[0x00] & 0x02)) {
+			func_7845(); /* always returns 0 */
+			func_7845(); /* always returns 0 */
+			stepper_vref(0x07);
+			delay(75);
+			[0x9917] = 0x0003;
+			return 0;
+		}
+	} while (VV[0x1d]--);
 	beep_and_hang(2, 3); /* HANG, never returns */
-
-7831:
-	func_7845(); /* always returns 0 */
-	func_7845(); /* always returns 0 */
-	stepper_vref(0x07);
-	delay(75)
-	HL = 0x0003;
-	[0x9917] = HL;
-	return 0;
+}
 
 /* always returns 0 */
 /* 7845 */
@@ -6959,6 +6900,10 @@ int func_7851(void)
 }
 
 7860: DW: 0C 0D 0E 0F /* should be 5 bytes? */
+	1100
+	1101
+	1110
+	1111
 
 /* HANG, never returns */
 /* 786A */
@@ -7341,8 +7286,26 @@ int func_7B1D(void)
 		if (!(VV[0x0f] & 0x02))
 			return 1;
 		[0x994B]--;
-		if (EA == 0x0000)
-			goto 1E8F;
+		if (EA == 0x0000) {
+			EA = [0x9921] + [0x9927];
+			ETM1 = EA;
+			ETM0 = EA + 2;
+			if (VV[0x06] & 0x10) {
+				[0x981B] = etimer_3;
+				[0x9818] = timer1_1;
+			} else {
+				[0x981B] = etimer_2;
+				[0x9818] = timer1_1;
+			}
+			ETMM = 0x0c; /* 0000 1100 */ /*  */
+			VV[FLAGS_1] |= 0x20; /* 0010 0000 */
+			skit(FE1);
+			skit(FE0);
+			func_2322(); /* ignore rets, there's a nop after this */
+			MKL &= 0xbf; /* 1011 1111 */ /* activate INTE1 */
+			VV[FLAGS_1] |= 0x80; /* 1000 0000 */
+			return 0;
+		}
 		return 1;
 	}
 
@@ -7355,17 +7318,55 @@ int func_7B1D(void)
 /* 7B4D */
 void func_7B4D(void)
 {
-	HL = [0x991D];
+	HL = [0x991D]; /* HL = 0x7b66 or 0x7b76 */
 	A  = [0xC008];
-	if (!(VV[0x00] & 0x20))
-		[0xC008] = [HL + A];
+	if (!(VV[0x00] & 0x20)) {
+		A = [HL + A];
+		[0xC008] = A;
+	}
 	[0xC008] = [HL + A];
 	check_voltage(); /* either returns 0 or resets */
 	return 0;
 }
 
-7B66: DW: 0D 0D 0D 0D 0D 0F 0C 0D 0D 0D 0D 0E 08 05 06 0B
-7B76: DW: 0D 0D 0D 0D 0D 0D 0E 0D 0C 0D 0D 0F 06 08 0B 05
+7B66: DW: 0D   0D   0D   0D   0D   0F   0C   0D   0D   0D   0D   0E   08   05   06   0B
+          1101 1101 1101 1101 1101 1111 1100 1101 1101 1101 1101 1110 1000 0101 0110 1011
+	1101
+	1101
+	1101
+	1101
+	1101
+	1111
+	1100
+	1101
+
+	1101
+	1101
+	1101
+	1110
+	1000
+	0101
+	0110
+	1011
+7B76: DW: 0D   0D   0D   0D   0D   0D   0E   0D   0C   0D   0D   0F   06   08   0B   05
+          1101 1101 1101 1101 1101 1101 1110 1101 1100 1101 1101 1111 0110 1000 1011 0101
+	1101
+	1101
+	1101
+	1101
+	1101
+	1101
+	1110
+	1101
+
+	1100
+	1101
+	1101
+	1111
+	0110
+	1000
+	1011
+	0101
 
 /* 7B86 */
 int sensor_home_position_debounced(void)
