@@ -580,7 +580,7 @@ void func_0309(void)
 	30 46              DCRW    VV:46
 	goto 0457
 	VV[0x14] &= 0xfb; /* 1111 1011 */
-	func_0C48(); /* always returns 0 */
+	killall(); /* always returns 0 */
 	write_all_93c06(); /* always returns 0 */
 	reset();
 	one_short_beep(); /* always returns 0 */
@@ -706,7 +706,7 @@ void reset_ram(uint8_t c)
 	memset(0x9800, c, 0x2000);
 	A = [0xb7ff];
 	if (A != C) { /* C is 0xff */
-		func_0C48(); /* always returns 0 */
+		killall(); /* always returns 0 */
 		beep_x_y(4, 2, 0); /* 1044 */
 		while(1); /* HANG */
 	}
@@ -1314,7 +1314,7 @@ void check_voltage(void)
 	if (VV[VOLTAGE_STATUS] & UNDER_VOLTAGE_2) { /* 0000 0010 */
 		if (A <= 0xb8) { /* less than 21.86 V */
 			VV[VOLTAGE_STATUS] |= UNDER_VOLTAGE_1; /* 0000 0001 */
-			func_0C48(); /* always returns 0 */
+			killall(); /* always returns 0 */
 			write_all_93c06(); /* always returns 0 */
 			[0xC004] = C004_7 | C004_6 | C004_1 | C004_0; /* 1100 0011 */
 			reset();
@@ -1334,7 +1334,7 @@ void irq_nmi(void)
 		reset();
 	if (!(VV[VOLTAGE_STATUS] & UNDER_VOLTAGE_1)) {
 		VV[VOLTAGE_STATUS] |= UNDER_VOLTAGE_1;
-		func_0C48(); /* always returns 0 */
+		killall(); /* always returns 0 */
 		write_all_93c06(); /* always returns 0 */
 		[0xC004] = C004_7 | C004_6 | C004_1 | C004_0; /* 1100 0011 */
 		reset();
@@ -1345,7 +1345,7 @@ void irq_nmi(void)
 
 /* always returns 0 */
 /* 0C48 */
-void func_0C48(void)
+void killall(void)
 {
 	MKL    = 0xff; /* mask all interrupts */
 	MKH    = 0xff; /* mask all interrupts */
@@ -6909,7 +6909,7 @@ int func_7851(void)
 /* 786A */
 void beep_and_hang(uint8_t repeat, uint8_t n_beeps)
 {
-	func_0C48(); /* always returns 0 */
+	killall(); /* always returns 0 */
 	write_all_93c06(); /* always returns 0 */
 	beep_x_y(repeat, n_beeps, 0);
 	while(1); /* HANG */
@@ -7331,42 +7331,48 @@ void func_7B4D(void)
 
 7B66: DW: 0D   0D   0D   0D   0D   0F   0C   0D   0D   0D   0D   0E   08   05   06   0B
           1101 1101 1101 1101 1101 1111 1100 1101 1101 1101 1101 1110 1000 0101 0110 1011
-	1101
-	1101
-	1101
-	1101
-	1101
-	1111
-	1100
-	1101
-
-	1101
-	1101
-	1101
-	1110
-	1000
-	0101
-	0110
-	1011
 7B76: DW: 0D   0D   0D   0D   0D   0D   0E   0D   0C   0D   0D   0F   06   08   0B   05
           1101 1101 1101 1101 1101 1101 1110 1101 1100 1101 1101 1111 0110 1000 1011 0101
-	1101
-	1101
-	1101
-	1101
-	1101
-	1101
-	1110
-	1101
 
-	1100
-	1101
-	1101
-	1111
-	0110
-	1000
-	1011
-	0101
+/* 1-2 phase excitation (SLA7020M) */
+INA tdA INB tdB
+1   0   0   0
+1   0   0   1
+1   0   1   0
+1   1   1   0
+0   0   1   0
+0   0   1   1
+0   0   0   0
+0   1   0   0
+/* from run dump, invert bits, switch bit0 with bit3 */
+original
+1   0   1   1
+1   1   1   1
+0   1   0   1
+1   1   0   1
+1   0   0   0
+1   1   0   0
+0   1   1   0
+1   1   1   0
+/* inverted */
+0   1   0   0
+0   0   0   0
+1   0   1   0
+0   0   1   0
+0   1   1   1
+0   0   1   1
+1   0   0   1
+0   0   0   1
+/* switch bits */
+0   1   0   0
+0   0   0   0
+0   0   1   1
+0   0   1   0
+1   1   1   0
+1   0   1   0
+1   0   0   1
+1   0   0   0
+/* it's going backwards! it's going back home =D */
 
 /* 7B86 */
 int sensor_home_position_debounced(void)
