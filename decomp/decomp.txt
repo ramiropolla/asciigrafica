@@ -7345,7 +7345,8 @@ INA tdA INB tdB
 0   0   0   0
 0   1   0   0
 /* from run dump, invert bits, switch bit0 with bit3 */
-original
+/* original */
+!tdB!tdA!INB!INA
 1   0   1   1
 1   1   1   1
 0   1   0   1
@@ -7355,6 +7356,7 @@ original
 0   1   1   0
 1   1   1   0
 /* inverted */
+tdB tdA INB INA
 0   1   0   0
 0   0   0   0
 1   0   1   0
@@ -7364,6 +7366,7 @@ original
 1   0   0   1
 0   0   0   1
 /* switch bits */
+INA tdA INB tdB
 0   1   0   0
 0   0   0   0
 0   0   1   1
