@@ -7122,10 +7122,7 @@ void __attribute__((interrupt)) timer1_2(void)
 		push(BC);
 		push(DE);
 		push(HL);
-		A = VV[0x1D];
-		HL = [991F];
-		A = [HL+A];
-		TM1 = A;
+		TM1 = [[0x991F]+VV[0x1D]];
 		func_7AC4(); /* always returns 0 */
 		func_7A99(); /* always returns 0 */
 		HL = pop();
