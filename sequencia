@@ -1,0 +1,393 @@
+[...]
+PC: 780d _ CALL    $7882
+PC: 7882 _ LXI     HL,$010D
+PC: 7885 _ LXI     HL,$00D1
+PC: 7888 _ LDED    $9917
+PC: 788c _ DMOV    EA,HL
+PC: 788d _ DNE     EA,DE
+PC: 7892 _ PUSH    HL
+PC: 7893 _ CALT    ($00A6)
+main_loop_1 {
+	PC: 7ba4 _ OFFIW   VV:0F,$C0
+	PC: 7ba8 _ RET     
+}
+
+PC: 7894 _ POP     HL
+PC: 7895 _ BIT     7,VV:00
+PC: 7899 _ MVI     A,$01
+PC: 789b _ STAW    VV:1F
+PC: 789d _ PUSH    HL
+PC: 789e _ LDED    $9917
+PC: 78a2 _ DMOV    EA,HL
+PC: 78a3 _ ANIW    VV:00,$BF
+PC: 78a6 _ DSUBNB  EA,DE
+PC: 78a9 _ JR      $78B0
+PC: 78b0 _ LXI     HL,$001E
+PC: 78b3 _ DLT     EA,HL
+PC: 78b5 _ JR      $78BF
+PC: 78bf _ LXI     HL,$9949
+PC: 78c2 _ STEAX   (HL)
+PC: 78c4 _ CALT    ($00AA)
+func_798D {
+	PC: 798d _ CALL    $7BBE
+	func_7BBE {
+		PC: 7bbe _ CALT    ($00A6)
+		main_loop_1 {
+			PC: 7ba4 _ OFFIW   VV:0F,$C0
+			PC: 7ba8 _ RET     
+		}
+
+		PC: 7bbf _ BIT     1,VV:0F
+		PC: 7bc1 _ RET     
+	}
+	PC: 7990 _ OFFIW   VV:00,$10
+	PC: 7995 _ JR      $799C
+	PC: 799c _ BIT     6,VV:00
+	PC: 799e _ LXI     HL,$7B66
+	PC: 79a1 _ LXI     HL,$7B76
+	PC: 79a4 _ SHLD    $991D
+	PC: 79a8 _ LDAW    VV:1F
+	PC: 79aa _ SLL     A
+	PC: 79ac _ TABLE   
+	PC: 79ae _ JR      $79B9
+	PC: 79b9 _ SBCD    $991F
+	PC: 79bd _ ORIW    VV:0F,$90
+	PC: 79c0 _ CALL    $7C1F
+	func_7c1f {
+		PC: 7c1f _ LXI     HL,$9917
+		PC: 7c22 _ LDEAX   (HL)
+		PC: 7c24 _ LBCD    $9949
+		PC: 7c28 _ BIT     6,VV:00
+		PC: 7c2a _ JR      $7C43
+		PC: 7c43 _ DADD    EA,BC
+		PC: 7c45 _ LXI     DE,$01F4
+		PC: 7c48 _ DGT     EA,DE
+		PC: 7c4a _ JR      $7C5B
+		PC: 7c5b _ STEAX   (HL)
+		PC: 7c5d _ RET     
+	}
+	PC: 79c3 _ NEIW    VV:1F,$04
+	PC: 79c7 _ EQIW    VV:1F,$01
+	PC: 79cb _ ORIW    VV:00,$20
+	PC: 79ce _ LXI     HL,$9949
+	PC: 79d1 _ LDEAX   (HL)
+	PC: 79d3 _ DSLL    EA
+	PC: 79d5 _ STEAX   (HL)
+	PC: 79d7 _ LXI     HL,$994B
+	PC: 79da _ LDEAX   (HL)
+	PC: 79dc _ DSLL    EA
+	PC: 79de _ STEAX   (HL)
+	PC: 79e0 _ MVI     A,$1C
+	PC: 79e2 _ MVI     A,$0E
+	PC: 79e4 _ STAW    VV:1D
+	PC: 79e6 _ CALL    $7C62
+	{
+		PC: 7c62 - stepper_vref(05);
+		':maincpu' (7C65): ap2k_PA_w(00): ef: stepper vref 5
+	}
+	PC: 79e9 _ ORI     TMM,$E0
+	PC: 79ec _ LXI     HL,$7A04
+	PC: 79ef _ SHLD    $9818
+	PC: 79f3 _ ORIW    VV:0F,$01
+	PC: 79f6 _ MVI     A,$E6
+	PC: 79f8 _ MOV     TM1,A
+	PC: 79fa _ SKIT    FT1
+	PC: 79fc _ NOP     
+	PC: 79fd _ ANI     TMM,$3F
+	PC: 7a00 _ ANI     MKL,$FB
+	PC: 7a03 _ RET     
+}
+PC: 78c5 _ BIT     7,VV:00
+PC: 78ca _ POP     HL
+PC: 78cb _ BIT     7,VV:00
+PC: 78cf _ JMP     $7BA4
+
+passa pelo 7888 e trava no main_loop_1 no final, porque
+muda a condição VV:0F,$C0
+
+main_loop_1:
+do {
+	PC: 7ba4 _ OFFIW   VV:0F,$C0
+	PC: 7ba7 _ JR      $7B9C
+	PC: 7b9c _ OFFIW   VV:00,$10
+	PC: 7ba2 _ NOP     
+	{
+		PC: 7ba3 - check_gate_array_input(); in
+		PC: 2089 _ BIT     7,VV:11
+		PC: 208b _ BIT     6,VV:14
+		PC: 208d - check_gate_array_input(); out
+	}
+} while (42);
+
+9945:
+PC: 7a04 - timer1_2 in, ECNT 0x006f
+PC: 7a06 _ DMOV    HL,EA
+PC: 7a07 _ SHLD    $9921
+PC: 7a0b _ CALL    $7A34 {
+	PC: 7a34 _ ONIW    VV:0F,$41
+	PC: 7a38 _ BIT     0,VV:0F
+	PC: 7a3b _ ANIW    VV:0F,$FE
+	PC: 7a3e _ BIT     6,VV:0F
+	PC: 7a40 _ JR      $7A4C
+	PC: 7a4c _ CALL    $7C5E
+	PC: 7c5e - stepper_vref(06);
+	':maincpu' (7C61): ap2k_PA_w(00): f7: stepper vref 6
+	PC: 7a4f _ RET     
+}
+PC: 7a0e _ JR      $7A16
+PC: 7a16 _ CALT    ($00A8) {
+	PC: 7b4d - cr_step();
+	':maincpu' (7B55): e05a30_r([0xC008]): 0x0d
+	':maincpu' (7B63): e05a30_w([0xC008]): 08
+	':maincpu' (7B63): ap2k_cr_stepper(08); prev 8 cur 9 abs 192
+	PC: 0c16 - check_voltage();
+}
+PC: 7a17 _ EXX     
+PC: 7a18 _ EXA     
+PC: 7a19 _ EI      
+PC: 7a1a _ PUSH    VA
+PC: 7a1b _ PUSH    EA
+PC: 7a1c _ PUSH    BC
+PC: 7a1d _ PUSH    DE
+PC: 7a1e _ PUSH    HL
+PC: 7a1f _ LDAW    VV:1D
+PC: 7a21 _ LHLD    $991F
+PC: 7a25 _ LDAX    (HL+A)
+PC: 7a26 _ MOV     TM1,A
+PC: 7a28 _ CALL    $7AC4 {
+	PC: 7ac4 _ ONIW    VV:0F,$18
+	PC: 7ac8 _ BIT     4,VV:0F
+	PC: 7acc _ NEIW    VV:1F,$04
+	PC: 7ad0 _ EQIW    VV:1F,$01
+	PC: 7ad4 _ NEIW    VV:1D,$0E
+	PC: 7ada _ DCRW    VV:1D
+	PC: 7adc _ EQIW    VV:1D,$00
+	PC: 7adf _ RET     
+}
+PC: 7a2b _ CALL    $7A99 {
+	PC: 7a99 _ OFFIW   VV:0F,$69
+	PC: 7a9d _ CALL    $7B1D {
+		PC: 7b1d _ LXI     HL,$9949
+		PC: 7b20 _ CALT    ($00BE) {
+			PC: 0041 - [0x9949]--;
+		}
+		PC: 7b21 _ BIT     7,VV:00
+		PC: 7b24 _ LXI     HL,$0000
+		PC: 7b27 _ DEQ     EA,HL
+		PC: 7b29 _ RETS    
+	}
+	PC: 7aa1 _ OFFIW   VV:00,$80
+	PC: 7aa4 _ JR      $7AB9
+	PC: 7ab9 _ BIT     6,VV:00
+	PC: 7abc _ CALT    ($00AC) {
+		PC: 7b95 - sensor_home_position();
+		PC: 0fbf - read_stable_PA();
+		':maincpu' (0FC1): ap2k_PA_r(00): result c1
+		':maincpu' (0FC4): ap2k_PA_r(00): result c1
+	}
+	PC: 7abd _ RET     
+}
+PC: 7a2e _ POP     HL
+PC: 7a2f _ POP     DE
+PC: 7a30 _ POP     BC
+PC: 7a31 _ POP     EA
+PC: 7a32 _ POP     VA
+PC: 7a33 - timer1_2 out
+
+13566:
+PC: 7a04 - timer1_2 in, ECNT 0x005a
+PC: 7a06 _ DMOV    HL,EA
+PC: 7a07 _ SHLD    $9921
+PC: 7a0b _ CALL    $7A34 {
+	PC: 7a34 _ ONIW    VV:0F,$41
+	PC: 7a37 _ RET     
+}
+PC: 7a0e _ JR      $7A16
+PC: 7a16 _ CALT    ($00A8) {
+	PC: 7b4d - cr_step();
+	':maincpu' (7B55): e05a30_r([0xC008]): 0x08
+	':maincpu' (7B63): e05a30_w([0xC008]): 0c
+	':maincpu' (7B63): ap2k_cr_stepper(0a); prev 9 cur 10 abs 191
+	PC: 0c16 - check_voltage();
+}
+PC: 7a17 _ EXX     
+PC: 7a18 _ EXA     
+PC: 7a19 _ EI      
+PC: 7a1a _ PUSH    VA
+PC: 7a1b _ PUSH    EA
+PC: 7a1c _ PUSH    BC
+PC: 7a1d _ PUSH    DE
+PC: 7a1e _ PUSH    HL
+PC: 7a1f _ LDAW    VV:1D
+PC: 7a21 _ LHLD    $991F
+PC: 7a25 _ LDAX    (HL+A)
+PC: 7a26 _ MOV     TM1,A
+PC: 7a28 _ CALL    $7AC4 {
+	PC: 7ac4 _ ONIW    VV:0F,$18
+	PC: 7ac8 _ BIT     4,VV:0F
+	PC: 7acc _ NEIW    VV:1F,$04
+	PC: 7ad0 _ EQIW    VV:1F,$01
+	PC: 7ad4 _ NEIW    VV:1D,$0E
+	PC: 7ada _ DCRW    VV:1D
+	PC: 7adc _ EQIW    VV:1D,$00
+	PC: 7adf _ RET     
+}
+PC: 7a2b _ CALL    $7A99 {
+	PC: 7a99 _ OFFIW   VV:0F,$69
+	PC: 7a9d _ CALL    $7B1D {
+		PC: 7b1d _ LXI     HL,$9949
+		PC: 7b20 _ CALT    ($00BE) {
+			PC: 0041 - [0x9949]--;
+		}
+		PC: 7b21 _ BIT     7,VV:00
+		PC: 7b24 _ LXI     HL,$0000
+		PC: 7b27 _ DEQ     EA,HL
+		PC: 7b29 _ RETS    
+	}
+	PC: 7aa1 _ OFFIW   VV:00,$80
+	PC: 7aa4 _ JR      $7AB9
+	PC: 7ab9 _ BIT     6,VV:00
+	PC: 7abc _ CALT    ($00AC) {
+		PC: 7b95 - sensor_home_position();
+		PC: 0fbf - read_stable_PA();
+		':maincpu' (0FC1): ap2k_PA_r(00): result c1
+		':maincpu' (0FC4): ap2k_PA_r(00): result c1
+	}
+	PC: 7abd _ RET     
+}
+PC: 7a2e _ POP     HL
+PC: 7a2f _ POP     DE
+PC: 7a30 _ POP     BC
+PC: 7a31 _ POP     EA
+PC: 7a32 _ POP     VA
+PC: 7a33 - timer1_2 out
+
+16462:
+PC: 7a04 - timer1_2 in, ECNT 0x002f
+PC: 7a06 _ DMOV    HL,EA
+PC: 7a07 _ SHLD    $9921
+PC: 7a0b _ CALL    $7A34 {
+	PC: 7a34 _ ONIW    VV:0F,$41
+	PC: 7a37 _ RET     
+}
+PC: 7a0e _ JR      $7A16
+PC: 7a16 _ CALT    ($00A8) {
+	PC: 7b4d - cr_step();
+	':maincpu' (7B55): e05a30_r([0xC008]): 0x0c
+	':maincpu' (7B63): e05a30_w([0xC008]): 06
+	':maincpu' (7B63): ap2k_cr_stepper(02); prev 10 cur 11 abs 190
+	PC: 0c16 - check_voltage();
+}
+PC: 7a17 _ EXX     
+PC: 7a18 _ EXA     
+PC: 7a19 _ EI      
+PC: 7a1a _ PUSH    VA
+PC: 7a1b _ PUSH    EA
+PC: 7a1c _ PUSH    BC
+PC: 7a1d _ PUSH    DE
+PC: 7a1e _ PUSH    HL
+PC: 7a1f _ LDAW    VV:1D
+PC: 7a21 _ LHLD    $991F
+PC: 7a25 _ LDAX    (HL+A)
+PC: 7a26 _ MOV     TM1,A
+PC: 7a28 _ CALL    $7AC4 {
+	PC: 7ac4 _ ONIW    VV:0F,$18
+	PC: 7ac8 _ BIT     4,VV:0F
+	PC: 7acc _ NEIW    VV:1F,$04
+	PC: 7ad0 _ EQIW    VV:1F,$01
+	PC: 7ad4 _ NEIW    VV:1D,$0E
+	PC: 7ada _ DCRW    VV:1D
+	PC: 7adc _ EQIW    VV:1D,$00
+	PC: 7adf _ RET     
+}
+PC: 7a2b _ CALL    $7A99 {
+	PC: 7a99 _ OFFIW   VV:0F,$69
+	PC: 7a9d _ CALL    $7B1D {
+		PC: 7b1d _ LXI     HL,$9949
+		PC: 7b20 _ CALT    ($00BE) {
+			PC: 0041 - [0x9949]--;
+		}
+		PC: 7b21 _ BIT     7,VV:00
+		PC: 7b24 _ LXI     HL,$0000
+		PC: 7b27 _ DEQ     EA,HL
+		PC: 7b29 _ RETS    
+	}
+	PC: 7aa1 _ OFFIW   VV:00,$80
+	PC: 7aa4 _ JR      $7AB9
+	PC: 7ab9 _ BIT     6,VV:00
+	PC: 7abc _ CALT    ($00AC) {
+		PC: 7b95 - sensor_home_position();
+		PC: 0fbf - read_stable_PA();
+		':maincpu' (0FC1): ap2k_PA_r(00): result c1
+		':maincpu' (0FC4): ap2k_PA_r(00): result c1
+	}
+	PC: 7abd _ RET     
+}
+PC: 7a2e _ POP     HL
+PC: 7a2f _ POP     DE
+PC: 7a30 _ POP     BC
+PC: 7a31 _ POP     EA
+PC: 7a32 _ POP     VA
+PC: 7a33 - timer1_2 out
+
+237986:
+PC: 7a04 - timer1_2 in, ECNT 0x004f
+PC: 7a06 _ DMOV    HL,EA
+PC: 7a07 _ SHLD    $9921
+PC: 7a0b _ CALL    $7A34 {
+	PC: 7a34 _ ONIW    VV:0F,$41
+	PC: 7a37 _ RET     
+}
+PC: 7a0e _ JR      $7A16
+PC: 7a16 _ CALT    ($00A8) {
+	PC: 7b4d - cr_step();
+	':maincpu' (7B55): e05a30_r([0xC008]): 0x0f
+	':maincpu' (7B63): e05a30_w([0xC008]): 05
+	':maincpu' (7B63): ap2k_cr_stepper(01); prev 6 cur 7 abs 2
+	PC: 0c16 - check_voltage();
+}
+PC: 7a17 _ EXX     
+PC: 7a18 _ EXA     
+PC: 7a19 _ EI      
+PC: 7a1a _ PUSH    VA
+PC: 7a1b _ PUSH    EA
+PC: 7a1c _ PUSH    BC
+PC: 7a1d _ PUSH    DE
+PC: 7a1e _ PUSH    HL
+PC: 7a1f _ LDAW    VV:1D
+PC: 7a21 _ LHLD    $991F
+PC: 7a25 _ LDAX    (HL+A)
+PC: 7a26 _ MOV     TM1,A
+PC: 7a28 _ CALL    $7AC4 {
+	PC: 7ac4 _ ONIW    VV:0F,$18
+	PC: 7ac7 _ RET     
+}
+PC: 7a2b _ CALL    $7A99 {
+	PC: 7a99 _ OFFIW   VV:0F,$69
+	PC: 7a9d _ CALL    $7B1D {
+		PC: 7b1d _ LXI     HL,$9949
+		PC: 7b20 _ CALT    ($00BE) {
+			PC: 0041 - [0x9949]--;
+		}
+		PC: 7b21 _ BIT     7,VV:00
+		PC: 7b24 _ LXI     HL,$0000
+		PC: 7b27 _ DEQ     EA,HL
+		PC: 7b29 _ RETS    
+	}
+	PC: 7aa1 _ OFFIW   VV:00,$80
+	PC: 7aa4 _ JR      $7AB9
+	PC: 7ab9 _ BIT     6,VV:00
+	PC: 7abc _ CALT    ($00AC) {
+		PC: 7b95 - sensor_home_position();
+		PC: 0fbf - read_stable_PA();
+		':maincpu' (0FC1): ap2k_PA_r(00): result c1
+		':maincpu' (0FC4): ap2k_PA_r(00): result c1
+	}
+	PC: 7abd _ RET     
+}
+PC: 7a2e _ POP     HL
+PC: 7a2f _ POP     DE
+PC: 7a30 _ POP     BC
+PC: 7a31 _ POP     EA
+PC: 7a32 _ POP     VA
+PC: 7a33 - timer1_2 out

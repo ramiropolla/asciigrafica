@@ -248,7 +248,6 @@ _start:
 
 	/* 018c */
 	func_77b1(); /* always returns 0 */
-	/* DEBUG DOESN'T REACH HERE */
 	func_2AFA(); /* always returns 0 */
 	clear_0xff00_0xff48(); /* always returns 0 */
 0195:
@@ -6838,17 +6837,21 @@ void func_77b1(void)
 	VV[0x00] |= CR_SEEK_HOME;
 /* 77F7: */
 	if (!sensor_home_position_debounced()) {
+		/* go back home */
 		[0x9917] = 0x03E3;
 		func_7875(); /* always returns 0 */
 	}
 /* 7806: */
 	[0x9917] = 0x0000;
-	func_7888(0x010D); /* always returns 0 */ /* DEBUG HANGS HERE */
+	func_7888(0x010D); /* always returns 0 */
+/* 7810: */
 	VV[0x00] &= ~CR_SEEK_HOME;
 	cr_step_array = cr_backward_array;
+/* 7c5e: */
 	stepper_vref(0x06);
 	delay(6);
 
+/* 7820: */
 	cr_step_ops = 20;
 	do {
 		cr_step_check_home(); /* always returns 0 */
@@ -6858,10 +6861,16 @@ void func_77b1(void)
 	beep_and_hang(2, 3); /* HANG, never returns */
 
 got_home:
+/* 7831 */
 	cr_step_check_home(); /* always returns 0 */
+/* 7834 */
 	cr_step_check_home(); /* always returns 0 */
+/* 7837 */
 	stepper_vref(0x07);
+/* 783c */
 	delay(75);
+/* 783d: */
+
 	[0x9917] = 0x0003;
 	return 0;
 }
@@ -7127,13 +7136,7 @@ int func_7A34(void)
 {
 	if (!(VV[0x0f] & 0x41)) /* 0100 0001 */
 		return 0;
-	if (VV[0x0f] & 0x40) { /* 0100 0000 */
-		if (VV[0x1e]--) {
-			VV[0x0f] &= 0xbf; /* 1011 1111 */
-			timer1_reset(); /* always returns 0 */
-		}
-	} else {
-		/* VV[0x0f] & 0x01 */
+	if (VV[0x0f] & 0x01) { /* 0000 0001 */
 		VV[0x0f] &= 0xfe; /* 1111 1110 */
 		if (!(VV[0x0f] & 0x40)) {
 			stepper_vref(0x06);
@@ -7142,6 +7145,12 @@ int func_7A34(void)
 		stepper_vref(0x07);
 		TM1 = 0xc0;
 		VV[0x1e] = 0x0e;
+	} else {
+		/* VV[0x0f] & 0x40 */
+		if (VV[0x1e]--) {
+			VV[0x0f] &= 0xbf; /* 1011 1111 */
+			timer1_reset(); /* always returns 0 */
+		}
 	}
 	return 1;
 }
@@ -7159,8 +7168,8 @@ void __attribute__((interrupt)) timer1_1(void)
 /* 7A6A */
 void func_7A6A(void)
 {
-	VV[0x0F] &= 0xCF; /* 1100 1111 */
-	VV[0x0F] |= 0x08; /* 0000 1000 */
+	VV[0x0f] &= 0xCF; /* 1100 1111 */
+	VV[0x0f] |= 0x08; /* 0000 1000 */
 	switch (tm1_array_choice) {
 	case 0: tm1_array = tm1_array_0+1; break;
 	case 1: tm1_array = tm1_array_1+1; break;
@@ -7177,7 +7186,7 @@ void func_7A6A(void)
 /* 7A99 */
 void func_7A99(void)
 {
-	if (VV[0x0f] & 0x69)
+	if (VV[0x0f] & 0x69) /* 0110 1001 */
 		return 0; /* 7A9C */
 	if (!func_7B1D())
 		return 0; /* 7AA0 */
@@ -7396,7 +7405,7 @@ int sensor_home_position(void)
 /* 7BA4 */
 void main_loop_1(void)
 {
-	while (VV[0x0f] & 0xc0) {
+	while (VV[0x0f] & 0xc0) { /* 1100 0000 */
 		if (VV[0x00] & 0x10) /* 0001 0000 */
 			func_1F9F(); /* ignore rets, there's a nop after this */
 		check_gate_array_input(); /* always returns 0 */
