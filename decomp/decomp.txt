@@ -81,9 +81,12 @@ uint8_t  unused_rld_trick; /**< 0xFF89 */
 002B: void delay(C ms){}
 0041: [HL]--; return;
 
-0050: 48 29              CALB    
-0052: return 1;
-0053: return 0;
+/* 0050 */
+int inv_CALB(uint16_t B)
+{
+	return !(*B)();
+}
+
 0060: 00                 NOP          /* IRQ 6 */
 
 0080: 002B /* DONE */ delay(C ms);
@@ -111,7 +114,7 @@ uint8_t  unused_rld_trick; /**< 0xFF89 */
 00AC: 7B95 /* DONE */ sensor_home_position();
 00AE: 1680
 00B0: 1B02 /* DONE */ func_1B02(); /* always returns 0 */
-00B2: 0050
+00B2: 0050 /* DONE */ inv_CALB(B); /* inverts return of CALB */
 00B4: 242B /* DONE */ { if (D > 0x97) D = 0x90; if (D < 0x90) D = 0x97; }
 00B6: 28F4 /* DONE */ func_28F4();
 00B8: 05A5 /* DONE */ { memset(EA, 0x00, B*255+C); A = 0x00; }
@@ -218,6 +221,7 @@ _start:
 	if ([0xffff] != 0x00)
 		beep_endlessly(); /* HANG */
 
+	/* 3>>> Clears the memory. Sends the ACK signal to the host computer via the interface. */
 	reset_ram(0xff);
 	reset_ram(0x00);
 
@@ -241,15 +245,19 @@ _start:
 
 	VV[VOLTAGE_STATUS] &= ~UNDER_VOLTAGE_1; /* 1111 1110 */
 
+/* 017A */
 	check_test_switches(); /* always returns 0 */
+/* 017D */
 	configure_serial(); /* always returns 0 */
+/* 0180 */
 	reset_data_buffer(); /* always returns 0 */
+/* 0183 */
 	func_2313(); /* always returns 0 */
 
 	VV[0x4f] &= 0xf7; /* 1111 0111 */
 	VV[0x4f] |= 0x40; /* 0100 0000 */
 
-	/* 018c */
+/* 018c */
 	func_77b1(); /* always returns 0 */
 	func_2AFA(); /* always returns 0 */
 /* 0192 */
@@ -267,24 +275,28 @@ _start:
 /* 01ab */
 	55 14 20           OFFIW   VV:14,$20
 	goto 01C4;
-/* 01af DEBUG1 */
-	40 5B 0F           CALL    $0F5B
+/* 01af */
+	40 5B 0F           CALL    $0F5B /* DEBUG stuck here 1 */
 	if (VV[0x03] & SELF_TEST_MODE) goto 0350;
 	if (VV[0x03] & DATA_DUMP_MODE) goto 0392;
 	if (VV[0x14] & 0x04) goto 043E;
 01C4:
-	40 CF 01           CALL    $01CF
+	func_01CF(); /* always returns 0 */
 	40 38 13           CALL    $1338
 	goto 01C4;
 	func_05CD(); /* always returns 0 */
 	goto 01C4;
 
-01CF:
-	40 A2 0E           CALL    $0EA2
-	check_gate_array_input(); /* always returns 0 */
-	if (!func_2127())
-		goto 01CF;
+/* always returns 0 */
+/* 01CF */
+void func_01CF()
+{
+	do {
+		40 A2 0E           CALL    $0EA2
+		check_gate_array_input(); /* always returns 0 */
+	} while (!func_2127());
 	return 0;
+}
 
 /* 01D8 */
 void read_dipsw_to_ram()
@@ -502,7 +514,7 @@ void func_0309(void)
 		BC = pop();
 03AC:
 		push(BC);
-		40 CF 01           CALL    $01CF
+		func_01CF(); /* always returns 0 */
 		BC = pop();
 		EA = [0x000F];
 		EA &= BC;
@@ -1673,7 +1685,8 @@ char nibble_to_char(uint8_t A)
 0ECE:
 	sw_online_wait(); /* DEBUG STUCK HERE WAITING FOR ONLINE BUTTON */
 0ECF:
-	40 37 2C           CALL    $2C37
+	func_2C37(); /* always returns 0 */
+/* 0ed2 */
 	48 44              SKIT    F2 /* ONLINE BUTTON */
 	goto 0ECF
 	if (VV[0x13] & 0x20)
@@ -1766,7 +1779,8 @@ void sw_online_wait(void)
 /* 0F6A */
 	func_32CF(); /* always returns 0 */
 /* 0F6D */
-	goto 0EC2;
+	goto 0EC2; /* DEBUG stuck here 2 */
+
 0F70:
 	VV[0x14] |= 0x40; /* 0100 0000 */
 	[0xC004] &= ~(C004_6 | C004_3 | C004_2); /* 1011 0011 */
@@ -5752,27 +5766,31 @@ void func_2B5A(void)
 	beep_x_y(5, 4, 1); /* 104E */
 	goto 0EC2;
 
-2C37:
+/* always returns 0 */
+/* 2C37 */
+void func_2C37(void)
+{
 	func_32CF(); /* always returns 0 */
-	40 4B 2E           CALL    $2E4B
-	00                 NOP     
-	if (!sensor_paper_end_debounced())
-		goto 2C4C;
-	VV[0x13] |= 0x04
-	55 13 20           OFFIW   VV:13,$20
-	40 C4 32           CALL    $32C4
-	VV[0x13] &= 0xDF;
-2C4C:
-	BC = 0x0FE4; sw_line_feed
-	99                 CALT    ($00B2)
-	40 79 2C           CALL    $2C79
-	BC = 0x0FEB; sw_form_feed
-	99                 CALT    ($00B2)
-	40 A4 2C           CALL    $2CA4
-	BC = 0x0FF2; sw_load_eject
-	99                 CALT    ($00B2)
-	40 B2 2C           CALL    $2CB2
-	goto 32B9;
+	func_2E4B(); /* result skipped */
+	if (sensor_paper_end_debounced()) {
+		VV[0x13] |= 0x04;
+		if (VV[0x13] & 0x20)
+			[0x9929] = 0x0166;
+		VV[0x13] &= 0xDF;
+	}
+/* 2C4C */
+	if (!sw_line_feed())
+		func_2C79(); /* always returns 0 I DON'T KNOW */
+/* 2C53 */
+	if (!sw_form_feed())
+		func_2CA4(); /* always returns 0 I DON'T KNOW */
+/* 2C5A */
+	if (!sw_load_eject())
+		func_2CB2(); /* always returns 0 I DON'T KNOW */
+/* 2C61 */
+	func_32B9(); /* always returns 0 */
+	return 0; /* from func_32B9() */
+}
 
 2C64:
 	59 14              BIT     1,VV:14
@@ -5875,7 +5893,7 @@ void func_2B5A(void)
 	goto 2D1C
 
 2D07:
-	40 C4 32           CALL    $32C4
+	[0x9929] = 0x0166;
 	59 14              BIT     1,VV:14
 	goto 2DA5
 	55 14 40           OFFIW   VV:14,$40
