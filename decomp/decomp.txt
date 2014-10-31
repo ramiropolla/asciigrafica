@@ -92,7 +92,7 @@ int inv_CALB(uint16_t B)
 0080: 002B /* DONE */ delay(C ms);
 0082: 1057 /* DONE */ one_short_beep();
 0084: 1325 /* DONE */ func_1325();
-0086: 14ec
+0086: 14ec /* DONE */ func_14EC(); /* always returns 0 */
 0088: 00ca /* DONE */ EA = mul24(EA, A);
 008A: 170F /* DONE */ func_170F(); /* always returns 0 */
 008C: 16f7
@@ -178,7 +178,8 @@ g. Set the horizontal tab position to every 8 columns.
 i. Set the print mode according to the DIP switches.
 #endif
 
-_start:
+void _noreturn _start()
+{
 	/* 1>>> Clears all port outputs. Executes the program from address OH. */
 	/* 2>>> Sets up the I/O ports. Initializes the CR and PF motors. */
 	/* 3>>> Clears the memory. Sends the ACK signal to the host computer via the interface. */
@@ -271,21 +272,24 @@ _start:
 /* 01a5 */
 	func_10A8(); /* always returns 0 */
 /* 01a8 */
-	40 33 02           CALL    $0233
+	func_0233(); /* always returns 0 */
+
 /* 01ab */
-	55 14 20           OFFIW   VV:14,$20
-	goto 01C4;
+	if (!(VV[0x14] & 0x20)) {
 /* 01af */
-	func_0F5B(); /* always returns 0 */ /* DEBUG stuck here 1 */
-	if (VV[0x03] & SELF_TEST_MODE) goto 0350;
-	if (VV[0x03] & DATA_DUMP_MODE) goto 0392;
-	if (VV[0x14] & 0x04) goto 043E;
-01C4:
-	func_01CF(); /* always returns 0 */
-	40 38 13           CALL    $1338
-	goto 01C4;
-	func_05CD(); /* always returns 0 */
-	goto 01C4;
+		func_0F5B(); /* always returns 0 */ /* DEBUG stuck here 1 */
+		if (VV[0x03] & SELF_TEST_MODE) goto 0350;
+		if (VV[0x03] & DATA_DUMP_MODE) goto 0392;
+		if (VV[0x14] & 0x04) goto 043E;
+	}
+
+	/* 8>>> Enters the interface waiting state (main routine for data processing). */
+	while (1) {
+		func_01CF(); /* always returns 0 */
+		if (func_1338())
+			func_05CD(); /* always returns 0 */
+	}
+}
 
 /* always returns 0 */
 /* 01CF */
@@ -335,64 +339,69 @@ void wait_for_ADC(uint8_t A)
 	return 0;
 }
 
-0233:
-	A = VV[DIPSW1];
-	if (!(A & 0x01)) {
+/* always returns 0 */
+/* 0233 */
+void func_0233()
+{
+	uint8_t dipsw1 = VV[DIPSW1];
+	uint8_t dipsw2;
+
+	if (!(dipsw1 & 0x01)) {
 		/* 12 cpi */
-		push(VA);
-		40 10 15           CALL    $1510
-		VA = pop();
+		func_1510(); /* always returns 0 */
 	}
-	if (!(A & 0x02)) {
+	if (!(dipsw1 & 0x02)) {
 		/* shape of zero */
 		VV[0x04] |= SLASHED_ZERO; /* 0100 0000 */
 	}
 	/* page length */
-	if (!(A & 0x08)) {
-		if (A & 0x04) HL = 0x072C; /*  8.5" */
+	if (!(dipsw1 & 0x08)) {
+		if (dipsw1 & 0x04) HL = 0x072C; /*  8.5" */
 		else          HL = 0x09D8; /* 11.7" */
 	} else {
-		if (A & 0x04) HL = 0x0948; /* 11"   */
+		if (dipsw1 & 0x04) HL = 0x0948; /* 11"   */
 		else          HL = 0x0A20; /* 12"   */
 	}
 	[0x992D] = HL;
 	[0x9931] = HL;
-	if (A & 0x10) {
+	if (dipsw1 & 0x10) {
 		/* italics mode */
 		VV[0x04] &= 0xf8; /* 1111 1000 */
-		if (A & 0x80) VV[0x0c] |= 0x01;
-		if (A & 0x40) VV[0x0c] |= 0x02;
-		if (A & 0x20) VV[0x0c] |= 0x04;
+		if (dipsw1 & 0x80) VV[0x0c] |= 0x01;
+		if (dipsw1 & 0x40) VV[0x0c] |= 0x02;
+		if (dipsw1 & 0x20) VV[0x0c] |= 0x04;
 	} else {
 		/* graphics mode */
 		VV[0x04] |= GRAPHICS_1 | GRAPHICS_2; /* 0011 0000 */
-		if (A & 0x80) VV[0x04] |= PC_SEL_18;
-		if (A & 0x40) VV[0x04] |= PC_SEL_17;
-		if (A & 0x20) VV[0x04] |= PC_SEL_16;
+		if (dipsw1 & 0x80) VV[0x04] |= PC_SEL_18;
+		if (dipsw1 & 0x40) VV[0x04] |= PC_SEL_17;
+		if (dipsw1 & 0x20) VV[0x04] |= PC_SEL_16;
 		VV[0x0C] = 0x00;
 	}
-	A = VV[DIPSW2];
-	if (!(A & 0x01)) VV[0x14] |= 0x01;
+
+	dipsw2 = VV[DIPSW2];
+	if (!(dipsw2 & 0x01)) VV[0x14] |= 0x01;
 	VV[0x02] &= 0xdf;
-	if (!(A & 0x02)) VV[0x02] |= 0x20;
+	if (!(dipsw2 & 0x02)) VV[0x02] |= 0x20;
 	EA = HL;
 	B = 0x00;
-	if (!(A & 0x04)) B = 0xD8;
+	if (!(dipsw2 & 0x04)) B = 0xD8;
 	EA -= B;
 	HL = EA;
 	[0x992F] = HL;
-	if (!(A & 0x08))	VV[0x02] |= 0x80;
-	if (A & 0x10)
+	if (!(dipsw2 & 0x08))	VV[0x02] |= 0x80;
+	if (dipsw2 & 0x10)
 		VV[0x02] |= 0x0c;
 	[0x9806] = 0x10;
-	55 4F 04           OFFIW   VV:4F,$04
-	40 F8 14           CALL    $14F8
-	40 2B 15           CALL    $152B
+	if (VV[0x4F] & 0x04)
+		func_14F8(); /* always returns 0 */
+	func_152B(); /* always returns 0 */
 	58 4F              BIT     0,VV:4F
-	40 2F 15           CALL    $152F
+	func_152F(); /* always returns 0 */
 	59 4F              BIT     1,VV:4F
 	goto 15CD;
 	goto 15C9;
+}
 
 /* always returns 0 */
 /* 02CC */
@@ -501,8 +510,8 @@ void func_0309(void)
           "PS2414"
 
 0392:
-	40 2F 15           CALL    $152F
-	40 FC 14           CALL    $14FC
+	func_152F(); /* always returns 0 */
+	func_14FC(); /* always returns 0 */
 	HL = 0403;
 	40 F4 08           CALL    $08F4
 	40 82 2B           CALL    $2B82
@@ -594,10 +603,10 @@ void func_0434(void)
 	beep_x_y(1, 2, 1); /* 1054 */
 	40 D8 31           CALL    $31D8 /* returns int */
 	40 CC 04           CALL    $04CC
-	40 2B 15           CALL    $152B
+	func_152B(); /* always returns 0 */
 	40 C9 15           CALL    $15C9
-	40 FC 14           CALL    $14FC
-	40 14 15           CALL    $1514
+	func_14FC(); /* always returns 0 */
+	func_1514(); /* always returns 0 */
 	VV[0x46] = 0x04;
 	goto 046F
 0457:
@@ -605,10 +614,10 @@ void func_0434(void)
 	VV[0x46] = 0x01;
 	65 46 01           NEIW    VV:46,$01
 	goto 0465
-	40 2F 15           CALL    $152F
+	func_152F(); /* always returns 0 */
 	goto 046B
 0465:
-	40 2B 15           CALL    $152B
+	func_152B(); /* always returns 0 */
 	40 C9 15           CALL    $15C9
 046B:
 	BC = 0x8288;
@@ -1649,20 +1658,23 @@ void convert_digits_to_base16(uint16_t EA)
 	40 09 0F           CALL    $0F09
 
 0EA5:
-	40 4B 2E           CALL    $2E4B
-	goto 0EC2
+	if (!func_2E4B) {
+		func_0EC2(); /* always returns 0 */
+		return 0;
+	}
 	40 0A 2F           CALL    $2F0A
 	goto 2C2B;
 	48 44              SKIT    F2 /* ONLINE BUTTON */
 	return 0;
-	5C 13              BIT     4,VV:13
-	goto 0EBB
-	func_2FEF(); /* always returns 0 */
-	sw_online_wait();
-	return 0;
-0EBB:
-	if (VV[0x03] & DATA_DUMP_MODE) func_0412(); /* always returns 1, already skipped */
-	else                           func_1B05(); /* always returns 0 */
+	if (VV[0x13] & 0x10) {
+		func_2FEF(); /* always returns 0 */
+		sw_online_wait();
+		return 0;
+	}
+	if (VV[0x03] & DATA_DUMP_MODE)
+		func_0412(); /* always returns 1, already skipped */
+	else
+		func_1B05(); /* always returns 0 */
 	func_0EC2(); /* always returns 0 */
 	return 0;
 
@@ -1725,14 +1737,14 @@ void sw_online_wait(void)
 	VV[0x4F] &= 0xFD; /* 1111 1101 */
 	40 CD 15           CALL    $15CD
 	VV[0x4F] |= 0x01; /* 0000 0001 */
-	40 2B 15           CALL    $152B
+	func_152B(); /* always returns 0 */
 	goto 0F57
 0F33:
 	if (!sw_line_feed())
 		goto 0F3F;
 	one_short_beep(); /* always returns 0 */
 	VV[0x4F] &= 0xFE; /* 1111 1110 */
-	40 2F 15           CALL    $152F
+	func_152F(); /* always returns 0 */
 	goto 0F57
 0F3F:
 	if (!sw_load_eject())
@@ -1741,12 +1753,12 @@ void sw_online_wait(void)
 	goto 0F50
 	beep_x_y(1, 2, 1); /* 1054 */
 	VV[0x4F] &= 0xFB; /* 1111 1011 */
-	40 FC 14           CALL    $14FC
+	func_14FC(); /* always returns 0 */
 	goto 0F57
 0F50:
 	one_short_beep(); /* always returns 0 */
 	VV[0x4F] |= 0x04; /* 0000 0010 */
-	40 F8 14           CALL    $14F8
+	func_14F8(); /* always returns 0 */
 0F57:
 	wait_for_button(); /* always returns 0 */
 0F5A:
@@ -2545,68 +2557,121 @@ void func_1377(void)
 	VV[0x0B] |= 0x80
 	57 80              OFFI    A,$80
 	VV[0x0A] |= 0x10
-	goto 1536
+	func_1536(); /* always returns 0 */
+	return 0;
 
-14EC:
+/* always returns 0 */
+/* 14EC */
+void func_14EC()
+{
 	if (!(VV[0x02] & 0x01) && (VV[0x02] & 0x2)) {
-		VV[0x02] &= 0xFD;
-		VV[0x0A] &= 0xF7;
+		VV[0x02] &= 0xFD; /* 1111 1101 */
+		VV[0x0A] &= 0xF7; /* 1111 0111 */
 	}
-	goto 1536
-
-14F8:
-	VV[0x0B] |= 0x04;
-	goto 1536
-
-14FC:
-	VV[0x0B] &= 0xFB;
-	goto 1536
-1500:
-	VV[0x0A] |= 0x04;
-	goto 1536
+	func_1536(); /* always returns 0 */
+	return 0;
+}
+/* always returns 0 */
+/* 14F8 */
+void func_14F8()
+{
+	VV[0x0B] |= 0x04; /* 0000 0100 */
+	func_1536(); /* always returns 0 */
+	return 0;
+}
+/* always returns 0 */
+/* 14FC */
+void func_14FC()
+{
+	VV[0x0B] &= 0xFB; /* 1111 1011 */
+	func_1536(); /* always returns 0 */
+	return 0;
+}
+/* always returns 0 */
+/* 1500 */
+void func_1500()
+{
+	VV[0x0A] |= 0x04; /* 0000 0100 */
+	func_1536(); /* always returns 0 */
+	return 0;
+}
 1504:
 	VV[0x0A] &= 0xFB;
-	goto 1536
+	func_1536(); /* always returns 0 */
+	return 0;
 
 	VV[0x0A] |= 0x20;
-	goto 1536
+	func_1536(); /* always returns 0 */
+	return 0;
 
 	VV[0x0A] &= 0xDF;
-	goto 1536
+	func_1536(); /* always returns 0 */
+	return 0;
 
-1510:
-	VV[0x0A] |= 0x80; /* 12 cpi */
-	goto 1536
-
-1514:
-	VV[0x0A] &= 0x7F;
-	goto 1536
+/* always returns 0 */
+/* 1510 */
+void func_1510()
+{
+	/* 12 cpi */
+	VV[0x0A] |= 0x80; /* 1000 0000 */
+	func_1536(); /* always returns 0 */
+	return 0;
+}
+/* always returns 0 */
+/* 1514 */
+void func_1514()
+{
+	VV[0x0A] &= 0x7F; /* 0111 1111 */
+	func_1536(); /* always returns 0 */
+	return 0;
+}
 
 1518:
 	if (func_1325()) {
-		VV[0x0B] &= 0xDF;
+		VV[0x0B] &= 0xDF; /* 1101 1111 */
 	} else {
-		VV[0x0B] |= 0x20;
+		VV[0x0B] |= 0x20; /* 0010 0000 */
 	}
-	VV[0x0B] |= 0x40;
-	goto 1536
+	VV[0x0B] |= 0x40; /* 0100 0000 */
+	func_1536(); /* always returns 0 */
+	return 0;
+
 	VV[0x0B] &= 0xBF;
-	goto 1536
+	func_1536(); /* always returns 0 */
+	return 0;
+
 	if (!func_1325())
-		goto 152F;
+		func_152F(); /* always returns 0 */
+	else
+		func_152B(); /* always returns 0 */
+	return 0;
 
-152B:
-	VV[0x0B] |= 0x02;
-	goto 1536;
+/* always returns 0 */
+/* 152B */
+void func_152B()
+{
+	VV[0x0B] |= 0x02; /* 0000 0010 */
+	func_1536(); /* always returns 0 */
+	return 0;
+}
 
-152F:
-	VV[0x0B] &= 0xFD;
-	goto 1536;
+/* always returns 0 */
+/* 152F */
+void func_152F()
+{
+	VV[0x0B] &= 0xFD; /* 1111 0010 */
+	func_1536(); /* always returns 0 */
+	return 0;
+}
 
-	VV[0x07] |= 0x80;
-	goto 1536;
+	VV[0x07] |= 0x80; /* 1000 0000 */
+	func_1536(); /* always returns 0 */
+	return 0;
 
-1536:
+/* always returns 0 */
+/* 1536 */
+void func_1536()
+{
 	A = VV[0x07]
 	BC = [0x980A];
 	A &= 0xbf; /* 1011 1111 */
@@ -2659,6 +2724,7 @@ XXXXXX
 	VV[0x07] = A;
 	[0x9808] = BC;
 	return 0;
+}
 
 15A5:
 	if (!func_1325())
@@ -2682,9 +2748,12 @@ XXXXXX
 	BC = 0x0001;
 15CC:
 	goto 15D6
-15CD: BC = 0x0001;
-15D0: goto 15E9
-15D1: BC = 0x0010;
+15CD:
+	BC = 0x0001;
+15D0:
+	goto 15E9
+15D1:
+	BC = 0x0010;
 15D4:
 	if (!func_1325())
 		goto 15E9;
@@ -2840,7 +2909,7 @@ XXXXXX
 16F7:
 	func_1B02(); /* always returns 0 */
 16F8:
-	83                 CALT    ($0086)
+	func_14EC(); /* always returns 0 */
 	40 82 2B           CALL    $2B82
 	func_1707(); /* always returns 0 */
 	return 0;
@@ -2854,7 +2923,7 @@ XXXXXX
 	goto 16F8;
 	func_1B02(); /* always returns 0 */
 	40 6F 2B           CALL    $2B6F
-	83                 CALT    ($0086)
+	func_14EC(); /* always returns 0 */
 	func_1707(); /* always returns 0 */
 	return 0;
 
@@ -3189,7 +3258,7 @@ void func_170F(void)
 1926: VV[0x07] &= 0xBF;
 1929: goto 2291;
 192C: func_1B02(); /* always returns 0 */
-192D: 83                 CALT    ($0086)
+192D: func_14EC(); /* always returns 0 */
 192E: func_170B(); /* always returns 0 */
 1931: 5D 03              BIT     5,VV:03
 1933: goto 1979
@@ -7646,10 +7715,10 @@ uint8_t tm1_array_4[] = { 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x21,
 	8E                 CALT    ($009C)
 	return 0;
 	40 C9 15           CALL    $15C9
-	40 14 15           CALL    $1514
-	40 2F 15           CALL    $152F
+	func_1514(); /* always returns 0 */
+	func_152F(); /* always returns 0 */
 	goto 7D78;
-	40 2B 15           CALL    $152B
+	func_152B(); /* always returns 0 */
 	40 C9 15           CALL    $15C9
 7D78:
 	40 D6 04           CALL    $04D6
