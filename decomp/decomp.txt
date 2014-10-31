@@ -17,8 +17,6 @@ uint16_t data_buffer_size; /**< 0x9915 */
 uint8_t *cr_step_array;    /**< 0x991D */
 uint8_t *tm1_array;        /**< 0x991F */
 
-#define DATA_BUFFER_FULL 0x02
-
 /* VV[0x00] */
 #define CR_IS_HOME       0x02
 #define CR_HALF_STEP     0x20
@@ -36,7 +34,12 @@ uint8_t *tm1_array;        /**< 0x991F */
 #define GRAPHICS_2       0x20
 #define SLASHED_ZERO     0x40
 
+/* VV[0x0f] */
+#define CR_SHOULD_STOP   0x01
+
 /* VV[0x11] */
+#define DATA_BUFFER_FULL 0x02
+#define DONT_READ_DATA   0x40
 #define COMM_SERIAL      0x80
 
 uint8_t  print_this_char;  /**< 0x9815 (VV[0x15]) */
@@ -46,7 +49,7 @@ uint16_t timer1_func;      /**< 0x9818 (VV[0x18]) */
 uint8_t  jmp_insn_etimer;  /**< 0x981A (VV[0x1A]) */
 uint16_t etimer_func;      /**< 0x981B (VV[0x1B]) */
 uint8_t  cr_step_ops;      /**< 0x981D (VV[0x1D]) */
-
+uint8_t  cr_countdown;     /**< 0x981E (VV[0x1E]) */ /* deceleration */
 uint8_t  tm1_array_choice; /**< 0x981F (VV[0x1F]) */
 
 uint8_t  char_field_1;     /**< 0x983F (VV[0x3F]) */
@@ -104,7 +107,7 @@ uint8_t  unused_rld_trick; /**< 0xFF89 */
 00A4: 78D2
 00A6: 7BA4 /* DONE */ main_loop_1(); /* always returns 0 */
 00A8: 7B4D /* DONE */ cr_step(); /* always returns 0 */
-00AA: 798D /* DONE */ func_798D(); /* always returns 0 */
+00AA: 798D /* DONE */ start_moving_cr(); /* always returns 0 */
 00AC: 7B95 /* DONE */ sensor_home_position();
 00AE: 1680
 00B0: 1B02 /* DONE */ func_1B02(); /* always returns 0 */
@@ -249,16 +252,22 @@ _start:
 	/* 018c */
 	func_77b1(); /* always returns 0 */
 	func_2AFA(); /* always returns 0 */
+/* 0192 */
 	clear_0xff00_0xff48(); /* always returns 0 */
 0195:
 	9D                 CALT    ($00BA)
 	if (VV[0x4f] & 0x08) [0x993D] = 0x4C80;
 	else                 [0x993D] = 0x2D00;
+/* 01a2 */
 	func_2B5A(); /* always returns 0 */
+/* 01a5 */
 	func_10A8(); /* always returns 0 */
+/* 01a8 */
 	40 33 02           CALL    $0233
+/* 01ab */
 	55 14 20           OFFIW   VV:14,$20
 	goto 01C4;
+/* 01af DEBUG1 */
 	40 5B 0F           CALL    $0F5B
 	if (VV[0x03] & SELF_TEST_MODE) goto 0350;
 	if (VV[0x03] & DATA_DUMP_MODE) goto 0392;
@@ -390,7 +399,7 @@ void check_test_switches(void)
 		}
 		VV[0x4F] &= 0xFE; /* 1111 1110 */
 		VV[0x03] |= SELF_TEST_MODE; /* 0000 0010 */
-		VV[0x11] |= 0x40; /* 0100 0000 */
+		VV[0x11] |= DONT_READ_DATA; /* 0100 0000 */
 		one_short_beep(); /* always returns 0 */
 		return 0;
 	}
@@ -402,7 +411,7 @@ void check_test_switches(void)
 		}
 		VV[0x4F] |= 0x01; /* 0000 0001 */
 		VV[0x03] |= SELF_TEST_MODE; /* 0000 0010 */
-		VV[0x11] |= 0x40; /* 0100 0000 */
+		VV[0x11] |= DONT_READ_DATA; /* 0100 0000 */
 		one_short_beep(); /* always returns 0 */
 		return 0;
 	}
@@ -1324,8 +1333,9 @@ void killall(void)
 	[0xC005] = 0x0000; /* clears all pins of the printhead. */
 	[0xC007] = 0x0000; /* Latches the phase data for the CR motor. */
 	EOM   = b10011001; /* to set LVx, output LVx */
-	VV[0x0f] &= 0x3f; /* 0011 1111 */
-	VV[0x01] &= 0xcf; /* 1100 1111 */
+	VV[0x0f] &= ~0x80; /* 0111 1111 */
+	VV[0x0f] &= ~0x40; /* 1011 1111 */
+	VV[0x01] &=  0xcf; /* 1100 1111 */
 	func_0F9C(); /* always returns 0 */
 	return 0;
 }
@@ -1654,11 +1664,14 @@ char nibble_to_char(uint8_t A)
 	else                           func_1B05(); /* always returns 0 */
 0EC2:
 	func_2FE9(); /* always returns 0 */
+/* 0ec5 */
 	func_0F9C(); /* always returns 0 */
+/* 0ec8 */
 	if (!func_2E08())
 		func_31D0(); /* always returns 0 */
+/* 0ece */
 0ECE:
-	sw_online_wait();
+	sw_online_wait(); /* DEBUG STUCK HERE WAITING FOR ONLINE BUTTON */
 0ECF:
 	40 37 2C           CALL    $2C37
 	48 44              SKIT    F2 /* ONLINE BUTTON */
@@ -1741,12 +1754,18 @@ void sw_online_wait(void)
 0F5B:
 	if (!sensor_paper_end_debounced())
 		goto 0F70;
-	40 EC 32           CALL    $32EC
-	40 7D 2D           CALL    $2D7D
+/* 0F5D */
+	if (!func_32EC())
+/* 0F60 */
+		func_2D7D();
+/* 0F63 */
 	40 E5 32           CALL    $32E5
+/* 0F66 */
 	55 01 04           OFFIW   VV:01,$04
 	goto 0F70
+/* 0F6A */
 	func_32CF(); /* always returns 0 */
+/* 0F6D */
 	goto 0EC2;
 0F70:
 	VV[0x14] |= 0x40; /* 0100 0000 */
@@ -1760,7 +1779,7 @@ void sw_online_wait(void)
 		[0xC004] |=  C004_5; /* 0010 0000 */
 		[0xC004] &= ~C004_5; /* 1101 1111 */
 	} else {
-		if (VV[0x11] & 0x40)
+		if (VV[0x11] & DONT_READ_DATA)
 			return 0;
 		MKH &= 0xfd; /* 1111 1101 */ /* activate INTSR */
 		A = 0x11;
@@ -1776,7 +1795,7 @@ void func_0F9C(void)
 	check_gate_array_input(); /* always returns 0 */
 	VV[0x14] &= 0xBF; /* 1011 1111 */
 	[0xC004] &= ~C004_4; /* 1110 1111 */
-	if (!(VV[0x11] & 0x40)) {
+	if (!(VV[0x11] & DONT_READ_DATA)) {
 		TXB = 0x13;
 		[0xC004] |= C004_0; /* 0000 0001 */
 		delay(1);
@@ -1905,10 +1924,10 @@ void wait_for_button(void)
 void beep_endlessly(void)
 {
 	while (1) {
-		ETMM = 0x00;
+		ETMM = 0x00; /* 0000 0000 */ /* ECNT stops counting immediately and is set to 0000h */
 		EOM  = 0xb0;
-		ETM1 = 0x008c;
-		ETMM = 0x0c;
+		ETM1 = 0x008c; /* 14.7456MHz/140/2 = 4388,571428571 Hz beep */
+		ETMM = 0x0c; /* 0000 1100 */ /* Clear when ECNT = ETM1 */
 	}
 }
 
@@ -1941,10 +1960,10 @@ void one_short_beep(void)
 /* 1084 */
 void beep_60ms(void)
 {
-	ETMM = 0x00;
+	ETMM = 0x00; /* 0000 0000 */ /* ECNT stops counting immediately and is set to 0000h */
 	EOM  = 0xb0;
 	ETM1 = 0x008c;
-	ETMM = 0x0c;
+	ETMM = 0x0c; /* 0000 1100 */ /* Clear when ECNT = ETM1 */
 	delay(60);
 	EOM  = 0x99;
 	return 0;
@@ -2907,9 +2926,9 @@ void func_170F(void)
 1749: goto 1740
 174A: 8E                 CALT    ($009C)
 174B: goto 1740
-174C: VV[0x01] |= 0x04
+174C: VV[0x01] |= 0x04; /* 0000 0100 */
 174F: return 0;
-1750: VV[0x01] &= 0xFB;
+1750: VV[0x01] &= 0xFB; /* 1111 1011 */
 1753: return 0;
 1754: func_1B05(); /* always returns 0 */
 1755: 8E                 CALT    ($009C)
@@ -4051,7 +4070,7 @@ void func_1F11(void)
 /* 1F2D */
 void func_1F2D(void)
 {
-	func_1F75();
+	func_1F75(); /* always returns 0 */
 	if (!(VV[0x00] & 0x04)) /* 0000 0100 */
 		goto 1F49;
 	HL = [0x990D];
@@ -4090,6 +4109,7 @@ void func_1F2D(void)
 	return 0;
 }
 
+/* always returns 0 */
 void func_1F75(void)
 {
 	if (VV[0x00] & CR_IS_HOME) HL = 0x9850; /* 0000 0010 */
@@ -4097,7 +4117,7 @@ void func_1F75(void)
 	A = [HL+[9820]];
 	if (VV[0x00] & 0x04) /* 0000 0100 */
 		A += VV[0x25];
-	return;
+	return 0;
 }
 
 1F89: DW: 0A 01 10 0A 01 2D 20 39 2D 20 34 9A 1F 01 20 AC
@@ -4218,8 +4238,8 @@ uint8_t data_buffer_fifo_get(void)
 void check_gate_array_input(void)
 {
 	if ( (VV[0x11] & COMM_SERIAL)) return;
-	if (!(VV[0x11] & 0x40)) return;
-	if ( (VV[0x11] & 0x20)) return;
+	if (!(VV[0x14] & 0x40)) return;
+	if ( (VV[0x11] & 0x02)) return;
 	if (!([0xC002] & 0x80)) return;
 
 	disable_interrupts();
@@ -4266,7 +4286,7 @@ void __attribute__((interrupt)) irq_serial(void)
 		enable_interrupts();
 
 		if (data_buffer_size == 0x0100) {
-			VV[0x11] |= 0x40;
+			VV[0x11] |= DONT_READ_DATA;
 			[0xC004] |= C004_0; /* 0000 0001 */
 			TXB = 0x13;
 		}
@@ -4312,8 +4332,8 @@ int func_2127(void)
 
 	MKH &= 0xfd; /* 1111 1101 */ /* activate INTSR */
 
-	if ((VV[0x11] & 0x40) && data_buffer_size == 0x0210) {
-		VV[0x11] &= 0xbf; /* 1011 1111 */
+	if ((VV[0x11] & DONT_READ_DATA) && data_buffer_size == 0x0210) {
+		VV[0x11] &= ~DONT_READ_DATA; /* 1011 1111 */
 		TXB = 0x11;
 		[0xC004] &= ~C004_0; /* 1111 1110 */
 		[0xC004] |=  C004_1; /* 0000 0010 */
@@ -4328,66 +4348,62 @@ int func_2127(void)
 	HL = [0x9901];
 	[0x9903] = HL;
 	VV[0x03] |= 0x08;
-	VV[0x11] &= 0xC3;
+	VV[0x11] &= 0xC3; /* 1100 0011 */
 	HL = 0x0000;
 	[0x9947] = HL;
 	VV[0x33] = 0x00;
 	HL = 0x9A79;
 	[0x9945] = HL;
-	if (!(VV[0x11] & 0x01))
-		goto 21EE;
-	DE = [0x9951];
-	EA = DE;
-	DE = [0x9939] + 3;
-	EA -= DE;
-	A = 0x03;
-	EA = EA / A, A = EA % A; /* simultaneously */
-	BC = EA;
-	HL = 0x9A79;
-	EA = 0x0000;
-	goto 21DC
-21AD:
-	push(BC);
-	push(EA);
-	A = [DE++];
-	EA = [DE++];
-	77 20              EQI     A,$20
-	goto 21B9
-	EA = pop();
-	BC = pop();
-	goto 21DC
+	if (VV[0x11] & 0x01) {
+		DE = [0x9951];
+		EA = DE;
+		DE = [0x9939] + 3;
+		EA -= DE;
+		A = 0x03;
+		EA = EA / A, A = EA % A; /* simultaneously */
+		BC = EA;
+		HL = 0x9A79;
+		EA = 0x0000;
+		goto 21DC
+		push(BC);
+		push(EA);
+		A = [DE++];
+		EA = [DE++];
+		77 20              EQI     A,$20
+		goto 21B9
+		EA = pop();
+		BC = pop();
+		goto 21DC
 21B9:
-	3D                 STAX    (HL+)
-	push(VA);
-	59 02              BIT     1,VV:02
-	goto 21C2
-	A = EAL;
-	A &= 0x7f;
-	EAL = A;
-21C2:
-	[HL++] = EA;
-	VV[0x03] &= 0xF7; /* 1111 0111 */
-	A = EAH;
-	57 10              OFFI    A,$10
-	VV[0x11] |= 0x10; /* 0001 0000 */
-	A = EAL;
-	57 20              OFFI    A,$20
-	VV[0x11] |= 0x08; /* 0000 1000 */
-	VA = pop();
-	BC = EA;
-	func_22C9(); /* always returns 0 */
-	BC = pop();
-	EA += BC;
-	BC = pop();
+		3D                 STAX    (HL+)
+		push(VA);
+		if (VV[0x02] & 0x02) {
+			A = EAL;
+			A &= 0x7f;
+			EAL = A;
+		}
+		[HL++] = EA;
+		VV[0x03] &= 0xF7; /* 1111 0111 */
+		A = EAH;
+		57 10              OFFI    A,$10
+		VV[0x11] |= 0x10; /* 0001 0000 */
+		A = EAL;
+		57 20              OFFI    A,$20
+		VV[0x11] |= 0x08; /* 0000 1000 */
+		VA = pop();
+		BC = EA;
+		func_22C9(); /* always returns 0 */
+		BC = pop();
+		EA += BC;
+		BC = pop();
 21DC:
-	53                 DCR     C
-	goto 21AD
-	DE = [0x9905];
-	[0x9903] = DE;
-	EA += DE;
-	DE = EA;
-	[0x9901] = DE;
-21EE:
+		} while (C--);
+		DE = [0x9905];
+		[0x9903] = DE;
+		EA += DE;
+		DE = EA;
+		[0x9901] = DE;
+	}
 	[0x9939] = HL;
 	return 0;
 
@@ -5584,6 +5600,7 @@ void func_2AFA(void)
 	if (!sensor_paper_end_debounced()) A = 0x00;
 	else                               A = 0x10;
 	BC = pop();
+/* 2b0d */
 	A |= B;
 	B = A;
 	A ^= C;
@@ -5596,16 +5613,19 @@ void func_2AFA(void)
 		if (VV[0x4f] & 0x10)
 			VV[0x14] |= 0x02;
 	}
+/* 2b33 */
 	func_32BF(); /* always returns 0 */
 	[0xC007] = 0x05; /* 0000 0101 */
-	PC |= 0x04; /* 0000 0100 */
+	PC |= 0x04; /* 0000 0100 */ /* ONLINE LED */
 	delay(30);
-	PC &= 0xfb; /* 1111 1011 */
+	PC &= 0xfb; /* 1111 1011 */ /* ONLINE LED */
 	delay(25);
 	if ((VV[0x4f] & 0x10) || (VV[0x4f] & 0x20)) A = 0x0C;
 	else                                        A = 0x24;
+/* 2b51 */
 	func_3012(); /* always returns 0 */
 	func_301C(); /* always returns 0 */
+/* 2b57 */
 	VV[0x13] |= 0x02;
 	func_2B5A(); /* always returns 0 */
 	return 0;
@@ -5717,7 +5737,7 @@ void func_2B5A(void)
 		goto 2C27;
 	if (!func_32EC())
 		goto 2D47;
-	if (VV[0x01] & 0x04)
+	if (VV[0x01] & 0x04) /* 0000 0100 */
 		goto 2C27;
 	40 7D 2D           CALL    $2D7D
 	goto 2D07;
@@ -6007,7 +6027,7 @@ int func_2E08(void)
 		HL = [0x990F];
 		enable_interrupts();
 		if (HL != 0x0000) {
-			if (!(VV[0x01] & 0x80)) {
+			if (!(VV[0x01] & 0x80)) { /* 1000 0000 */
 				EA += HL;
 				if (EA > 0x0142) check_gate_array_input(); /* always returns 0 */
 				else             return 0;
@@ -6104,6 +6124,7 @@ int ckbit_1(uint8_t A)
 		return 0;
 	return 1;
 
+/* 2E8F */
 int sensor_release_x(void)
 {
 	if (!sensor_release())
@@ -6347,9 +6368,11 @@ void func_3012(void)
 	push(BC);
 	B = 0x80;
 	func_313F(); /* always returns 0 */
+/* 3017 */
 	BC = pop();
 	B = 0x00;
 	func_313F(); /* always returns 0 */
+/* 301b */
 	return 0;
 }
 /* always returns 0 */
@@ -6542,31 +6565,35 @@ void func_313F(void)
 		EA += BC;
 		[HL] = EA;
 	} else {
+/* 3160 */
 		enable_interrupts();
 		push(BC);
 		do {
 			check_gate_array_input(); /* always returns 0 */
 		} while ((VV[0x0f] & 0x02) || (VV[0x01] & 0x30));
+/* 3169 */
 		func_31B0(); /* always returns 0 */
+/* 316c */
 		BC = pop();
-		VV[0x01] |= 0x90
+		VV[0x01] |= 0x90; /* 1001 0000 */
 		if (!(B & 0x80))
-			VV[0x01] &= 0x7F;
+			VV[0x01] &= 0x7F; /* 0111 1111 */
 		B &= 0x7f;
 		[0x990f] = BC;
 		EA = 0x000A;
 		if (EA >= BC) {
-			VV[0x01] &= 0xB5; /* 1011 1100 */
+			VV[0x01] &= 0xB5; /* 1011 0101 */
 			A = 0x02;
 		} else {
 			VV[0x01] |= 0x48; /* 0100 1000 */
 			A = 0x0B;
 		}
 		VV[0x27] = A;
-		PC  |= 0x04; /* 0000 0100 */
-		ETMM = 0x04; /* 0000 0100 */ /*  */
+		PC  |= 0x04; /* 0000 0100 */ /* ONLINE LED */
+		ETMM = 0x04; /* 0000 0100 */ /* free running, clear at every full count ffffh */
 		disable_interrupts();
 		ETM0 = ECNT + 100;
+/* 31a4 */
 		etimer_func = etimer_4;
 		IRR &= ~FE0; /* clear FE0 */
 		MKL &= 0xdf; /* 1101 1111 */ /* activate INTE0 */
@@ -6589,9 +6616,11 @@ void func_31B0(void)
 		func_31D0(); /* always returns 0 */
 		return 0;
 	}
+/* 31c5 */
 	EA = 0x0168;
 	if (!(VV[0x4f] & 0x20))
 		EA = 0x01D4;
+/* 31cd */
 	if (EA <= BC)
 		return 0;
 	func_31D0(); /* always returns 0 */
@@ -6630,7 +6659,7 @@ etimer_4:
 	push(HL);
 	EA = ECNT;
 	push(EA);
-	if (!(VV[0x01] & 0x20))
+	if (!(VV[0x01] & 0x20)) /* 0010 0000 */
 		goto 3214;
 	enable_interrupts();
 	if (PC & 0x04) {
@@ -6638,7 +6667,7 @@ etimer_4:
 		goto 325A;
 	}
 	MKL |= 0x20; /* 0010 0000 */ /* mask INTE0 */
-	VV[0x01] &= 0xDF;
+	VV[0x01] &= 0xDF; /* 1101 1111 */
 	EA = pop();
 	HL = pop();
 	BC = pop();
@@ -6657,7 +6686,7 @@ etimer_4:
 	if (H & 0x80)
 		HL = 0x7FFF;
 	HL++;
-	if (!(VV[0x01] & 0x80))
+	if (!(VV[0x01] & 0x80)) /* 1000 0000 */
 		goto 3232;
 	HL--;
 	HL--;
@@ -6670,7 +6699,7 @@ etimer_4:
 		VV[0x01] |= 0x20; /* 0010 0000 */
 		VV[0x01] &= 0xED; /* 1110 1101 */
 	}
-	if (!(VV[0x01] & 0x08)) {
+	if (!(VV[0x01] & 0x08)) { /* 0000 1000 */
 		if (EA == 0x0004)
 			VV[0x01] |= 0x02; /* 0000 0010 */
 		if (VV[0x27] == 0x06)
@@ -6946,12 +6975,15 @@ void func_7888(uint16_t val)
 		}
 		[0x9949] = newval;
 
-		func_798D(); /* always returns 0 */
+		start_moving_cr(); /* always returns 0 */
 
+/* 78c5 */
 		if (!(VV[0x00] & CR_SEEK_HOME))
 			VV[0x00] |= 0x01; /* 0000 0001 */
 
 	} while (!(VV[0x00] & CR_SEEK_HOME));
+
+/* jmp 7ba4 */
 
 	main_loop_1(); /* always returns 0 */
 	return 0;
@@ -6959,45 +6991,39 @@ void func_7888(uint16_t val)
 
 78D2:
 	VV[0x00] |= 0x10; /* 0001 0000 */
-	if (!(VV[0x00] & 0x01)) /* 0000 0001 */
-		goto 78DF;
-	func_7bb1();
-	VV[0x00] &= 0xFE; /* 1111 1110 */
-	goto 78E0
-78DF:
-	main_loop_1(); /* always returns 0 */
-78E0:
+	if (VV[0x00] & 0x01) { /* 0000 0001 */
+		func_7bb1();
+		VV[0x00] &= 0xFE; /* 1111 1110 */
+	} else {
+		main_loop_1(); /* always returns 0 */
+	}
 	tm1_array_choice = 3;
-	func_1F75();
+	func_1F75(); /* always returns 0 */
 	HL = 0x990B;
 	DE = [0x9919];
 	EA = [HL++];
 	BC = [0x02B8];
 	EA += BC;
-	if (!(VV[0x00] & 0x04)) /* 0000 0100 */
-		goto 78F9;
-	EA -= A;
-	goto 78FB
-78F9:
-	EA += A;
-78FB:
+	if (VV[0x00] & 0x04) { /* 0000 0100 */
+		EA -= A;
+	} else {
+		EA += A;
+	}
 	B = 0x18;
 	48 3E              DIV     B
 	[DE++] = EA;
 	EA = [HL];
 	BC = [0x02B8];
 	EA += BC;
-	if (!(VV[0x00] & 0x04)) /* 0000 0100 */
-		goto 790E;
-	EA -= A;
-	goto 7910
-790E:
-	EA += A;
-7910:
+	if (VV[0x00] & 0x04) { /* 0000 0100 */
+		EA -= A;
+	} else {
+		EA += A;
+	}
 	A = 0x18;
 	EA = EA / A, A = EA % A; /* simultaneously */
-	77 00              EQI     A,$00
-	EA++;
+	if (!A)
+		EA++;
 	[DE] = EA;
 	func_7BFB(); /* always returns 0 */
 	EA = DE;
@@ -7038,7 +7064,7 @@ void func_7888(uint16_t val)
 7957:
 	HL = 0x9949;
 	[HL] = EA;
-	func_798D(); /* always returns 0 */
+	start_moving_cr(); /* always returns 0 */
 	main_loop_1(); /* always returns 0 */
 795E:
 	func_1F9F();
@@ -7058,14 +7084,14 @@ void func_7888(uint16_t val)
 	[0x994B] = HL;
 	tm1_array_choice = VV[0x20];
 	VV[0x00] &= 0xBF; /* 1011 1111 */
-	func_798D(); /* always returns 0 */
+	start_moving_cr(); /* always returns 0 */
 	VV[0x00] &= 0xEF; /* 1110 1111 */
-	ETMM = 0x04; /* 0000 0100 */ /*  */
+	ETMM = 0x04; /* 0000 0100 */ /* free running, clear at every full count ffffh */
 	return 0;
 
 /* always returns 0 */
 /* 798D */
-void func_798D(void)
+void start_moving_cr(void)
 {
 	func_7BBE(); /* always returns 0 */
 	if ((VV[0x00] & 0x10) && (VV[0x00] & 0x04)) /* 0001 0000 */ /* 0000 0100 */
@@ -7091,7 +7117,7 @@ void func_798D(void)
 	stepper_vref(0x05);
 	TMM |= 0xe0; /* 1110 0000 */
 	timer1_func = timer1_2;
-	VV[0x0F] |= 0x01; /* 0000 0001 */
+	VV[0x0F] |= CR_SHOULD_STOP; /* 0000 0001 */
 	A = 0xE6;
 	TM1 = A;
 	clear_interrupt(FT1);
@@ -7105,7 +7131,7 @@ void __attribute__((interrupt)) timer1_2(void)
 	EA = ECNT;
 	HL = EA;
 	[0x9921] = HL;
-	if (!func_7A34()) {
+	if (!cr_shouldnt_step()) {
 		cr_step(); /* always returns 0 */
 		exx();
 		exa();
@@ -7132,22 +7158,22 @@ void __attribute__((interrupt)) timer1_2(void)
 	return; /* FROM INTERRUPT */
 }
 /* 7A34 */
-int func_7A34(void)
+int cr_shouldnt_step(void)
 {
-	if (!(VV[0x0f] & 0x41)) /* 0100 0001 */
-		return 0;
-	if (VV[0x0f] & 0x01) { /* 0000 0001 */
-		VV[0x0f] &= 0xfe; /* 1111 1110 */
+	if (!(VV[0x0f] & 0x40) || !(VV[0x0f] & CR_SHOULD_STOP)) /* 0100 0001 */
+		return 0; /* cr_step */
+	if (VV[0x0f] & CR_SHOULD_STOP) { /* 0000 0001 */
+		VV[0x0f] &= ~CR_SHOULD_STOP; /* 1111 1110 */
 		if (!(VV[0x0f] & 0x40)) {
 			stepper_vref(0x06);
-			return 0;
+			return 0; /* cr_step */
 		}
 		stepper_vref(0x07);
 		TM1 = 0xc0;
-		VV[0x1e] = 0x0e;
+		cr_countdown = 0x0e;
 	} else {
 		/* VV[0x0f] & 0x40 */
-		if (VV[0x1e]--) {
+		if (cr_countdown--) {
 			VV[0x0f] &= 0xbf; /* 1011 1111 */
 			timer1_reset(); /* always returns 0 */
 		}
@@ -7186,7 +7212,7 @@ void func_7A6A(void)
 /* 7A99 */
 void func_7A99(void)
 {
-	if (VV[0x0f] & 0x69) /* 0110 1001 */
+	if ((VV[0x0f] & CR_SHOULD_STOP) || (VV[0x0f] & 0x40) || (VV[0x0f] & 0x28)) /* 0010 1000 */ /* 08, 20 */
 		return 0; /* 7A9C */
 	if (!func_7B1D())
 		return 0; /* 7AA0 */
@@ -7246,7 +7272,8 @@ void func_7AC4(void)
 				cr_step_ops--;
 				TM1 = [0x7C9A]; /* 87 */
 			} else {
-				VV[0x0f] |= 0x41; /* 0100 0001 */
+				VV[0x0f] |= CR_SHOULD_STOP; /* 0000 0001 */
+				VV[0x0f] |= 0x40; /* 0100 0000 */
 				VV[0x0f] &= 0x77; /* 0111 0111 */
 				VV[0x00] &= 0xDF; /* 1101 1111 */
 			}
@@ -7272,7 +7299,7 @@ int func_7B1D(void)
 	if (VV[0x00] & CR_HALF_STEP) HL = 0x001D;
 	else                         HL = 0x000F;
 
-	if (EA > HL) {
+	if (EA <= HL) {
 		if (!(VV[0x0f] & 0x02))
 			return 1;
 		[0x994B]--;
@@ -7287,7 +7314,7 @@ int func_7B1D(void)
 				etimer_func = etimer_2;
 				timer1_func = timer1_1;
 			}
-			ETMM = 0x0c; /* 0000 1100 */ /*  */
+			ETMM = 0x0c; /* 0000 1100 */ /* Clear when ECNT = ETM1 */
 			VV[FLAGS_1] |= 0x20; /* 0010 0000 */
 			skit(FE1);
 			skit(FE0);
@@ -7405,7 +7432,7 @@ int sensor_home_position(void)
 /* 7BA4 */
 void main_loop_1(void)
 {
-	while (VV[0x0f] & 0xc0) { /* 1100 0000 */
+	while ((VV[0x0f] & 0x80) || (VV[0x0f] & 0x40)) { /* 1100 0000 */
 		if (VV[0x00] & 0x10) /* 0001 0000 */
 			func_1F9F(); /* ignore rets, there's a nop after this */
 		check_gate_array_input(); /* always returns 0 */
@@ -7415,7 +7442,7 @@ void main_loop_1(void)
 /* 7BB1 */
 void func_7bb1(void)
 {
-	while (VV[0x0f] & 0xc0 || VV[0x01] & 0x30) {
+	while ((VV[0x0f] & 0x80) || (VV[0x0f] & 0x40) || VV[0x01] & 0x30) {
 		if (VV[0x00] & 0x10) /* 0001 0000 */
 			func_1F9F(); /* ignore rets, there's a nop after this */
 		check_gate_array_input(); /* always returns 0 */
@@ -7435,9 +7462,9 @@ void func_7BBE(void)
 		check_gate_array_input(); /* always returns 0 */
 	}
 	disable_interrupts();
-	if (VV[0x01] & 0x20) {
+	if (VV[0x01] & 0x20) { /* 0010 0000 */
 		MKL |= 0x20; /* 0010 0000 */ /* mask INTE0 */
-		VV[0x01] &= 0xDF;
+		VV[0x01] &= 0xDF; /* 1101 1111 */
 	}
 	enable_interrupts();
 	return 0;
