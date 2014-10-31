@@ -118,7 +118,7 @@ int inv_CALB(uint16_t B)
 00B4: 242B /* DONE */ { if (D > 0x97) D = 0x90; if (D < 0x90) D = 0x97; }
 00B6: 28F4 /* DONE */ func_28F4();
 00B8: 05A5 /* DONE */ { memset(EA, 0x00, B*255+C); A = 0x00; }
-00BA: 216F
+00BA: 216F /* DONE */ func_216F(); /* always returns 0 */
 00BC: 1334 /* DONE */ func_1334(); /* always returns 0 */
 00BE: 0041 /* DONE */ { [HL]--; }
 
@@ -252,7 +252,7 @@ _start:
 /* 0180 */
 	reset_data_buffer(); /* always returns 0 */
 /* 0183 */
-	func_2313(); /* always returns 0 */
+	reset_highmem(); /* always returns 0 */
 
 	VV[0x4f] &= 0xf7; /* 1111 0111 */
 	VV[0x4f] |= 0x40; /* 0100 0000 */
@@ -263,7 +263,7 @@ _start:
 /* 0192 */
 	clear_0xff00_0xff48(); /* always returns 0 */
 0195:
-	9D                 CALT    ($00BA)
+	func_216F(); /* always returns 0 */
 	if (VV[0x4f] & 0x08) [0x993D] = 0x4C80;
 	else                 [0x993D] = 0x2D00;
 /* 01a2 */
@@ -276,7 +276,7 @@ _start:
 	55 14 20           OFFIW   VV:14,$20
 	goto 01C4;
 /* 01af */
-	40 5B 0F           CALL    $0F5B /* DEBUG stuck here 1 */
+	func_0F5B(); /* always returns 0 */ /* DEBUG stuck here 1 */
 	if (VV[0x03] & SELF_TEST_MODE) goto 0350;
 	if (VV[0x03] & DATA_DUMP_MODE) goto 0392;
 	if (VV[0x14] & 0x04) goto 043E;
@@ -1551,9 +1551,9 @@ void 93c06.send(uint8_t A)
 	[HL] = EA;
 	A = VV[0x2C];
 	EA = EA / A, A = EA % A; /* simultaneously */
-	77 00              EQI     A,$00
-	EA++;
-	40 75 0E           CALL    $0E75
+	if (A != 0x00)
+		EA++;
+	convert_digits_to_base16(EA); /* always returns 0 */
 	HL = 0x0E26;
 	DE = 0xFF00;
 	strcpy(DE, HL); /* always returns 0 */
@@ -1617,44 +1617,31 @@ char nibble_to_char(uint8_t A)
 	return A;
 }
 
-0E75:
-	DE = 0x0000;
-	A = 0x02;
-0E7A:
-	B = 0x0A;
-	48 3E              DIV     B
-	77 02              EQI     A,$02
-	goto 0E86
-	push(VA);
-	A = B;
-	E = A;
-	VA = pop();
-	goto 0E9C
-0E86:
-	77 01              EQI     A,$01
-	goto 0E95
-	push(VA);
-	push(EA);
-	A = 0x10;
-	EA = A * B;
-	EA += DE;
-	DE = EA;
-	EA = pop();
-	VA = pop();
-	goto 0E9C
-0E95:
-	77 00              EQI     A,$00
-	goto 0E9C
-	push(VA);
-	A = B;
-	D = A;
-	VA = pop();
-0E9C:
-	51                 DCR     A
-	goto 0E7A
-	EA = DE;
-	BC = EA;
+/* Takes EA as a decimal value, and outputs each 10th to a separate
+ * hex digit. For example 123 would result in 0x0123 */
+/* always returns 0 */
+/* 0E75 */
+void convert_digits_to_base16(uint16_t EA)
+{
+	uint8_t result[2] = { 0x00, 0x00 };
+	int count = 0x02;
+	int val = EA;
+	int rem;
+
+	do {
+		rem = val % 10;
+		val = val / 10;
+		switch (count) {
+		case 0x02; result[0]  = rem       ; break;
+		case 0x01: result[0] += rem * 0x10; break;
+		case 0x00: result[1]  = rem       ; break;
+		}
+	} while (A--);
+
+	EA = result;
+	BC = result;
 	return 0;
+}
 
 0EA2:
 	40 09 0F           CALL    $0F09
@@ -1674,7 +1661,13 @@ char nibble_to_char(uint8_t A)
 0EBB:
 	if (VV[0x03] & DATA_DUMP_MODE) func_0412(); /* always returns 1, already skipped */
 	else                           func_1B05(); /* always returns 0 */
-0EC2:
+	func_0EC2(); /* always returns 0 */
+	return 0;
+
+/* always returns 0 */
+/* 0EC2 */
+void func_0EC2()
+{
 	func_2FE9(); /* always returns 0 */
 /* 0ec5 */
 	func_0F9C(); /* always returns 0 */
@@ -1682,35 +1675,28 @@ char nibble_to_char(uint8_t A)
 	if (!func_2E08())
 		func_31D0(); /* always returns 0 */
 /* 0ece */
-0ECE:
-	sw_online_wait(); /* DEBUG STUCK HERE WAITING FOR ONLINE BUTTON */
-0ECF:
-	func_2C37(); /* always returns 0 */
+	do {
+		sw_online_wait(); /* DEBUG STUCK HERE WAITING FOR ONLINE BUTTON */
+		do {
+			func_2C37(); /* always returns 0 */
 /* 0ed2 */
-	48 44              SKIT    F2 /* ONLINE BUTTON */
-	goto 0ECF
-	if (VV[0x13] & 0x20)
-		goto 0EE5;
-	if (!func_2E08())
-		goto 0EF3;
-	if (func_32EC() || !sensor_paper_end_debounced())
-		goto 0EE5;
-	if (!(VV[0x13] & 0x40))
-		goto 0EF3;
-0EE5:
-	40 C0 2C           CALL    $2CC0
-	if (VV[0x13] & 0x60)
-		goto 0ECE;
-	if (func_32E5() || !sensor_paper_end_debounced())
-		goto 0EF3;
-	goto 0ECE
-0EF3:
+		} while (!skit(F2));
+		if (VV[0x13] & 0x20)
+			continue;
+		if (!func_2E08())
+			break;
+		if (func_32EC() || !sensor_paper_end_debounced())
+			continue;
+		if (!(VV[0x13] & 0x40))
+			break;
+	} while (func_2CC0() || VV[0x13] & 0x60 || (!func_32E5() && sensor_paper_end_debounced()));
 	VV[0x13] &= 0xBB;
-	40 70 0F           CALL    $0F70
+	func_0F70(); /* always returns 0 */
 	40 0A 2F           CALL    $2F0A
 	goto 2C2B;
 	sw_online_wait();
 	return 0;
+}
 
 /* always returns 0 */
 /* 0F01 */
@@ -1764,24 +1750,33 @@ void sw_online_wait(void)
 0F5A:
 	return 0;
 
-0F5B:
-	if (!sensor_paper_end_debounced())
-		goto 0F70;
+/* always returns 0 */
+/* 0F5B */
+void func_0F5B()
+{
+	if (sensor_paper_end_debounced()) {
+		func_0F70(); /* always returns 0 */
+	} else {
 /* 0F5D */
-	if (!func_32EC())
-/* 0F60 */
-		func_2D7D();
-/* 0F63 */
-	40 E5 32           CALL    $32E5
+		if (!func_32EC())
+			func_2D7D(); /* TODO check return value */
 /* 0F66 */
-	55 01 04           OFFIW   VV:01,$04
-	goto 0F70
+		if (func32E5() || VV[0x01] & 0x04) {
+			func_0F70(); /* always returns 0 */
+		} else {
 /* 0F6A */
-	func_32CF(); /* always returns 0 */
+			func_32CF(); /* always returns 0 */
 /* 0F6D */
-	goto 0EC2; /* DEBUG stuck here 2 */
+			func_0EC2(); /* always returns 0 */ /* DEBUG stuck here 2 */
+		}
+	}
+	return 0;
+}
 
-0F70:
+/* always returns 0 */
+/* 0F70 */
+void func_0F70()
+{
 	VV[0x14] |= 0x40; /* 0100 0000 */
 	[0xC004] &= ~(C004_6 | C004_3 | C004_2); /* 1011 0011 */
 	if (VV[0x03] & SELF_TEST_MODE)
@@ -1802,8 +1797,10 @@ void sw_online_wait(void)
 	[0xC004] &= ~C004_0; /* 1111 1110 */
 	[0xC004] |=  C004_1; /* 0000 0010 */
 	return 0;
+}
 
 /* always returns 0 */
+/* 0F9C */
 void func_0F9C(void)
 {
 	check_gate_array_input(); /* always returns 0 */
@@ -2823,7 +2820,7 @@ XXXXXX
 16C9:
 	func_170B(); /* always returns 0 */
 	VV[0x11] &= 0xFE; /* 1111 1110 */
-	9D                 CALT    ($00BA)
+	func_216F(); /* always returns 0 */
 	return 0;
 	VV[0x04] |=  GRAPHICS_10; /* 0001 0000 */
 	return 0;
@@ -3581,7 +3578,7 @@ void func_1B05(void)
 	HL = [0x993D];
 	func_170F(); /* always returns 0 */
 1BB4:
-	9D                 CALT    ($00BA)
+	func_216F(); /* always returns 0 */
 	VV[0x06] |= 0x10; /* 0001 0000 */
 1BB8:
 	VV[0x05] &= 0xFB;
@@ -4340,68 +4337,60 @@ int func_2127(void)
 	return 1;
 }
 
-216F:
-	HL = [0x9901];
-	[0x9903] = HL;
-	VV[0x03] |= 0x08;
+/* always returns 0 */
+/* 216F */
+void func_216F()
+{
+	[0x9903] = [0x9901];
+	VV[0x03] |= 0x08; /* 0000 1000 */
 	VV[0x11] &= 0xC3; /* 1100 0011 */
-	HL = 0x0000;
-	[0x9947] = HL;
+	[0x9947] = 0x0000;
 	VV[0x33] = 0x00;
 	HL = 0x9A79;
 	[0x9945] = HL;
 	if (VV[0x11] & 0x01) {
-		DE = [0x9951];
-		EA = DE;
+		EA = [0x9951];
 		DE = [0x9939] + 3;
 		EA -= DE;
-		A = 0x03;
-		EA = EA / A, A = EA % A; /* simultaneously */
+		EA = EA / 3;
 		BC = EA;
 		HL = 0x9A79;
 		EA = 0x0000;
-		goto 21DC
-		push(BC);
-		push(EA);
-		A = [DE++];
-		EA = [DE++];
-		77 20              EQI     A,$20
-		goto 21B9
-		EA = pop();
-		BC = pop();
-		goto 21DC
-21B9:
-		3D                 STAX    (HL+)
-		push(VA);
-		if (VV[0x02] & 0x02) {
+		while (C--) {
+			push(BC);
+			push(EA);
+			A = [DE], DE += 1;
+			EA = [DE], DE += 2;
+			if (A == 0x20) {
+				EA = pop();
+				BC = pop();
+				continue;
+			}
+			[HL] = A, HL += 1;
+			push(VA);
+			if (VV[0x02] & 0x02)
+				EAL &= 0xf7; /* 1111 0111 */
+			[HL] = EA, HL += 2;
+			VV[0x03] &= 0xF7; /* 1111 0111 */
+			A = EAH;
+			if (A & 0x10) /* 0001 0000 */
+				VV[0x11] |= 0x10; /* 0001 0000 */
 			A = EAL;
-			A &= 0x7f;
-			EAL = A;
+			if (A & 0x20) /* 0010 0000 */
+				VV[0x11] |= 0x08; /* 0000 1000 */
+			VA = pop();
+			BC = EA;
+			func_22C9(); /* always returns 0 */
+			BC = pop();
+			EA += BC;
+			BC = pop();
 		}
-		[HL++] = EA;
-		VV[0x03] &= 0xF7; /* 1111 0111 */
-		A = EAH;
-		57 10              OFFI    A,$10
-		VV[0x11] |= 0x10; /* 0001 0000 */
-		A = EAL;
-		57 20              OFFI    A,$20
-		VV[0x11] |= 0x08; /* 0000 1000 */
-		VA = pop();
-		BC = EA;
-		func_22C9(); /* always returns 0 */
-		BC = pop();
-		EA += BC;
-		BC = pop();
-21DC:
-		} while (C--);
-		DE = [0x9905];
-		[0x9903] = DE;
-		EA += DE;
-		DE = EA;
-		[0x9901] = DE;
+		[0x9903] = [0x9905];
+		[0x9901] = [0x9905] + EA;
 	}
 	[0x9939] = HL;
 	return 0;
+}
 
 /* 21F3 */
 void rollover_DE_from_0x9000_to_0x8000(void)
@@ -4559,7 +4548,8 @@ void func_22E6(void)
 	return 0;
 }
 /* always returns 0 */
-void func_2313(void)
+/* 2313 */
+void reset_highmem(void)
 {
 	[0x995B] = 0x0400;
 	memset(0x9000, 0x00, 0x07fe);
@@ -5836,13 +5826,12 @@ void func_2C37(void)
 	goto 2D79
 
 2CC0:
-	5D 13              BIT     5,VV:13
-	goto 2CCC
-	if (!func_32EC())
-		goto 2D79
-	VV[0x13] &= 0xDF;
-	return 0;
-2CCC:
+	if (VV[0x13] & 0x20) {
+		if (!func_32EC())
+			goto 2D79
+		VV[0x13] &= 0xDF;
+		return 0;
+	}
 	if (!func_2E08())
 		return 0;
 2CD0:
