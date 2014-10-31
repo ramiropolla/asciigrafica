@@ -91,7 +91,7 @@ int inv_CALB(uint16_t B)
 
 0080: 002B /* DONE */ delay(C ms);
 0082: 1057 /* DONE */ one_short_beep();
-0084: 1325
+0084: 1325 /* DONE */ func_1325();
 0086: 14ec
 0088: 00ca /* DONE */ EA = mul24(EA, A);
 008A: 170F /* DONE */ func_170F(); /* always returns 0 */
@@ -119,7 +119,7 @@ int inv_CALB(uint16_t B)
 00B6: 28F4 /* DONE */ func_28F4();
 00B8: 05A5 /* DONE */ { memset(EA, 0x00, B*255+C); A = 0x00; }
 00BA: 216F
-00BC: 1334
+00BC: 1334 /* DONE */ func_1334(); /* always returns 0 */
 00BE: 0041 /* DONE */ { [HL]--; }
 
 /* bitmask for bit n, 0 = 00000001, 1 = 00000010, etc */
@@ -206,7 +206,7 @@ _start:
 		while (!skit(FAD) || C--); /* wait for 0x100 AD conversions */
 
 		A = CR1;
-		if (!(B & 0x02))
+		if (!(B & 0x02)) /* 0000 0010 */
 			break;
 		if (A >= 0xCA)
 			B = 0xfd; /* 1111 1101 */
@@ -2062,8 +2062,8 @@ void func_10A8(void)
 	A += 0x02;
 	EA = [HL + A];
 	[DE] = EA;
-	40 83 12           CALL    $1283
-	goto 118C
+	if (!func_1283())
+		goto 118C;
 	VV[0x13] |= 0x02
 	40 FA 11           CALL    $11FA
 	86                 CALT    ($008C)
@@ -2120,8 +2120,7 @@ void func_10A8(void)
 	VV[0x12] = 0x00;
 	return 0;
 1190:
-	40 83 12           CALL    $1283
-	00                 NOP     
+	func_1283(); /* result skipped */
 	EA = HL;
 	goto 1189
 
@@ -2165,7 +2164,7 @@ void func_119B(void)
 	[0x9923] = HL;
 	if (VV[0x12] & 0x04) A = [0xC006];
 	else                 A = [0xC005];
-	40 94 12           CALL    $1294
+	func_1294(); /* always returns 0 */
 	VV[0x12] |= 0x80;
 	VV[0x00] &= 0xFB; /* 1111 1011 */
 	92                 CALT    ($00A4)
@@ -2225,11 +2224,13 @@ end_123D:
 	[0x9941] = BC;
 	return 1;
 
-1283:
+/* 1283 */
+int func_1283()
+{
 	8E                 CALT    ($009C)
 	L = A;
 	push(HL);
-	9E                 CALT    ($00BC)
+	func_1334(); /* always returns 0 */
 	HL = pop();
 	H = A;
 	EA = 0x0000;
@@ -2237,37 +2238,26 @@ end_123D:
 		return 0;
 	[0x9941] = HL;
 	return 1;
+}
 
-1294:
-	HL = 0x9943;
-	EA = [HL];
+/* always returns 0 */
+/* 1294 */
+void func_1294()
+{
+	EA = [0x9943];
 	func_1196(); /* always returns 0 */
-	HL = 0x9943;
-	EA = [HL];
-	A = VV[0x22];
-	EA = mul24(EA, A);
-	HL = [0x9903];
-	EA += HL;
-	BC = EA;
-	[0x990B] = BC;
-	HL = 0x9941;
-	EA = [HL];
-	55 12 08           OFFIW   VV:12,$08
-	EA <<= 1;
-	BC = EA;
-	BC--;
-	DE = data_buffer_rptr;
-	EA = DE;
-	EA += BC;
+	[0x990B] = mul24([0x9943], VV[0x22]) + [0x9903];
+	EA = [0x9941];
+	if (VV[0x12] & 0x08)
+		EA <<= 1;
+	EA = data_buffer_rptr + EA - 1;
 	DE = EA;
-	BC = 0x9000;
-	int borrow = (EA >= BC);
-	EA -= BC;
-	if (!borrow)
-		goto 12CF;
-	EA += 0x8000;
-	DE = EA;
-12CF:
+	int borrow = (EA >= 0x9000);
+	EA -= 0x9000;
+	if (borrow) {
+		EA += 0x8000;
+		DE = EA;
+	}
 	for (BC = 0x0000; ; BC++) {
 		if (VV[0x12] & 0x08) {
 			A = [DE--];
@@ -2290,42 +2280,30 @@ end_123D:
 	EA -= BC;
 	[0x990D] = EA;
 	return 0;
+}
 
-1309: 00                 NOP     
-130A: EAH = A;
-130B: 60 05              illegal 
-130D: A = VV[0x0C];
-130F: 60 05              illegal 
-1311: 00                 NOP     
-1312: A = D;
-1313: push(VA);
-1314: SP++;
-1315: A = VV[0x06];
-1317: push(VA);
-1318: SP++;
-1319: A = VV[0x12];
-131B: exa();
-131C: A = EAH;
-131D: A = VV[0x14];
-131F: goto 1315
-1320: A = EAH;
-1321: A = VV[FLAGS_1];
-1323: 2A                 LDAX    (DE)
-1324: A &= 0xb1;
+1309:
+	0x1800, 0x0560, 0x0C01, 0x0560, 0x0C00, 0x02B0, 0x0601,
+	0x02B0, 0x1201, 0x0810, 0x1401, 0x08F5, 0x1001, 0x072A,
 
-1325:
-	push(BC);
-	9E                 CALT    ($00BC)
-	BC = pop();
+/* 1325 */
+int func_1325()
+{
+	func_1334(); /* always returns 0 */
 	if (A == 0x00 || A == '0') return 0;
 	if (A == 0x01 || A == '1') return 1;
 	HL = pop();
 	return 0;
+}
 
-1334:
+/* always returns 0 */
+/* 1334 */
+void func_1334()
+{
 	8E                 CALT    ($009C)
 	A &= 0x7f;
 	return 0;
+}
 
 1338:
 	55 02 08           OFFIW   VV:02,$08
@@ -2394,7 +2372,7 @@ void func_1377(void)
 	EA -= DE;
 	[HL] = EA;
 	return 0;
-	9E                 CALT    ($00BC)
+	func_1334(); /* always returns 0 */
 	67 19              NEI     A,$19
 	goto 13B3
 	77 7F              EQI     A,$7F
@@ -2590,8 +2568,10 @@ void func_1377(void)
 1504:
 	VV[0x0A] &= 0xFB;
 	goto 1536
+
 	VV[0x0A] |= 0x20;
 	goto 1536
+
 	VV[0x0A] &= 0xDF;
 	goto 1536
 
@@ -2604,19 +2584,17 @@ void func_1377(void)
 	goto 1536
 
 1518:
-	82                 CALT    ($0084)
-	goto 151E
-	VV[0x0B] &= 0xDF;
-	goto 1521
-151E:
-	VV[0x0B] |= 0x20;
-1521:
+	if (func_1325()) {
+		VV[0x0B] &= 0xDF;
+	} else {
+		VV[0x0B] |= 0x20;
+	}
 	VV[0x0B] |= 0x40;
 	goto 1536
 	VV[0x0B] &= 0xBF;
 	goto 1536
-	82                 CALT    ($0084)
-	goto 152F
+	if (!func_1325())
+		goto 152F;
 
 152B:
 	VV[0x0B] |= 0x02;
@@ -2625,6 +2603,7 @@ void func_1377(void)
 152F:
 	VV[0x0B] &= 0xFD;
 	goto 1536;
+
 	VV[0x07] |= 0x80;
 	goto 1536;
 
@@ -2682,8 +2661,9 @@ XXXXXX
 	[0x9808] = BC;
 	return 0;
 
-15A5: 82                 CALT    ($0084)
-15A6: goto 15AE
+15A5:
+	if (!func_1325())
+		goto 15AE;
 15A7: VV[0x02] |= 0x01;
 15AA: VV[0x0A] |= 0x08;
 15AD: goto 15B4
@@ -2706,17 +2686,15 @@ XXXXXX
 15CD: BC = 0x0001;
 15D0: goto 15E9
 15D1: BC = 0x0010;
-15D4: 82                 CALT    ($0084)
-15D5: goto 15E9
-15D6: HL = 0x980A;
-15D9: EA = [HL];
-15DB: EA |= BC;
-15DD: [HL] = EA;
-15DF: HL = 0x9808;
-15E2: EA = [HL];
-15E4: EA |= BC;
-15E6: [HL] = EA;
-15E8: return 0;
+15D4:
+	if (!func_1325())
+		goto 15E9;
+
+15D6:
+	[0x980A] |= BC;
+	[0x9808] |= BC;
+	return 0;
+
 15E9: EA = 0xFFFF;
 	EA ^= BC;
 15EE: BC = EA;
@@ -2730,8 +2708,8 @@ XXXXXX
 15FF: [HL] = EA;
 1601: return 0;
 1602:
-	if (func[0084]()) VV[0x04] |=  GRAPHICS_20; /* 0010 0000 */
-	else              VV[0x04] &= ~GRAPHICS_20; /* 1101 1111 */
+	if (func_1325()) VV[0x04] |=  GRAPHICS_20; /* 0010 0000 */
+	else             VV[0x04] &= ~GRAPHICS_20; /* 1101 1111 */
 	return 0;
 
 160C: 8E                 CALT    ($009C)
@@ -2757,8 +2735,9 @@ XXXXXX
 162E: A |= C;
 1630: VV[0x05] = A;
 1632: goto 15B4
-1634: 82                 CALT    ($0084)
-1635: goto 1641
+1634:
+	if (!func_1325())
+		goto 1641;
 1636: 55 07 20           OFFIW   VV:07,$20
 1639: return 0;
 163A: 40 4B 16           CALL    $164B
@@ -2905,8 +2884,8 @@ void func_170F(void)
 	return 0;
 }
 
-	82                 CALT    ($0084)
-	goto 1721
+	if (!func_1325())
+		goto 1721;
 	if (!(VV[0x00] & 0x08)) /* 0000 1000 */
 		func_1B05(); /* always returns 0 */
 	VV[0x00] |= 0x08; /* 0000 1000 */
@@ -2921,12 +2900,12 @@ void func_170F(void)
 172B: return 0;
 172C: VV[0x02] &= 0xFB;
 172F: return 0;
-1730: 9E                 CALT    ($00BC)
+1730: func_1334(); /* always returns 0 */
 1731: 37 0D              LTI     A,$0D
 1733: return 0;
 1734: VV[0x0C] = A;
 1736: return 0;
-1737: 9E                 CALT    ($00BC)
+1737: func_1334(); /* always returns 0 */
 1738: 37 56              LTI     A,$56
 173A: return 0;
 173B: B = 0x03;
@@ -2949,7 +2928,7 @@ void func_170F(void)
 1756: BC = 0x0000;
 1759: C = A;
 175A: goto 2B88;
-175D: 9E                 CALT    ($00BC)
+175D: func_1334(); /* always returns 0 */
 175E: 67 30              NEI     A,$30
 1760: goto 1768
 1761: 77 34              EQI     A,$34
@@ -2958,7 +2937,7 @@ void func_170F(void)
 1767: return 0;
 1768: VV[0x02] &= 0xDF;
 176B: return 0;
-176C: 9E                 CALT    ($00BC)
+176C: func_1334(); /* always returns 0 */
 176D: B = [0x982C];
 	if (print_this_char != 0x00)
 		goto 177B;
@@ -2981,7 +2960,7 @@ void func_170F(void)
 1799: [0x9907] = HL;
 179D: VV[0x0D] = 0x00;
 17A0: return 0;
-17A1: 9E                 CALT    ($00BC)
+17A1: func_1334(); /* always returns 0 */
 17A2: 67 00              NEI     A,$00
 17A4: return 0;
 17A5: B = A;
@@ -2998,7 +2977,7 @@ void func_170F(void)
 17B9: HL = 0x992F;
 17BC: [HL] = EA;
 17BE: return 0;
-17BF: 9E                 CALT    ($00BC)
+17BF: func_1334(); /* always returns 0 */
 17C0: 37 08              LTI     A,$08
 17C2: return 0;
 17C3: VV[0x03] |= 0x20; /* 0010 0000 */
@@ -3012,7 +2991,7 @@ void func_170F(void)
 17D3: [HL++] = EA;
 17D5: BC = [0x0020];
 17D8: goto 17FA
-17DA: 9E                 CALT    ($00BC)
+17DA: func_1334(); /* always returns 0 */
 17DB: 37 08              LTI     A,$08
 17DD: return 0;
 17DE: B = 0x11;
@@ -3055,9 +3034,10 @@ void func_170F(void)
 
 1817: B = A;
 1818: goto 180E
-1819: 82                 CALT    ($0084)
-181A: goto 1832
-181B: 9E                 CALT    ($00BC)
+1819:
+	if (!func_1325())
+		goto 1832;
+181B: func_1334(); /* always returns 0 */
 181C: B = A;
 181D: A = VV[0x2C];
 181F: EA = A * B;
@@ -3069,7 +3049,7 @@ void func_170F(void)
 182A: [0x9907] = BC;
 182E: VV[0x03] &= 0xDF; /* 1101 1111 */
 1831: return 0;
-1832: 9E                 CALT    ($00BC)
+1832: func_1334(); /* always returns 0 */
 1833: push(VA);
 1834: 97                 CALT    ($00AE)
 1835: VA = pop();
@@ -3085,10 +3065,11 @@ void func_170F(void)
 1848: VV[0x03] &= 0xDF; /* 1101 1111 */
 184B: VV[0x03] |= 0x10; /* 0001 0000 */
 184E: return 0;
-184F: 82                 CALT    ($0084)
-1850: goto 1862
+184F:
+	if (!func_1325())
+		goto 1862;
 1851: func_1B05(); /* always returns 0 */
-1852: 9E                 CALT    ($00BC)
+1852: func_1334(); /* always returns 0 */
 1853: B = A;
 1854: A = VV[0x2C];
 1856: EA = A * B;
@@ -3099,7 +3080,7 @@ void func_170F(void)
 185F: goto 2B88;
 1862: 55 05 80           OFFIW   VV:05,$80
 1865: return 0;
-1866: 9E                 CALT    ($00BC)
+1866: func_1334(); /* always returns 0 */
 1867: 67 00              NEI     A,$00
 1869: return 0;
 186A: push(VA);
@@ -3278,11 +3259,11 @@ void clear_0xff00_0xff48(void)
 }
 
 19B1: func_1B05(); /* always returns 0 */
-19B2: 9E                 CALT    ($00BC)
+19B2: func_1334(); /* always returns 0 */
 19B3: push(VA);
-19B4: 9E                 CALT    ($00BC)
+19B4: func_1334(); /* always returns 0 */
 19B5: push(VA);
-19B6: 9E                 CALT    ($00BC)
+19B6: func_1334(); /* always returns 0 */
 19B7: C = A;
 19B8: VA = pop();
 19B9: B = A;
@@ -3317,14 +3298,15 @@ void clear_5_lines(uint16_t HL, int stride)
 	return 0;
 }
 
-19E9: 82                 CALT    ($0084)
-19EA: goto 19EF
+19E9:
+	if (!func_1325())
+		goto 19EF;
 19EB: VV[0x04] |= 0x80; /* 1000 0000 */
 19EE: return 0;
 19EF: VV[0x04] &= 0x7F; /* 0111 1111 */
 19F2: return 0;
 19F3: func_1B05(); /* always returns 0 */
-19F4: 9E                 CALT    ($00BC)
+19F4: func_1334(); /* always returns 0 */
 19F5: push(VA);
 19F6: 8E                 CALT    ($009C)
 19F7: push(VA);
