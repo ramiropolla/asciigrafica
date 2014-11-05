@@ -195,6 +195,12 @@ void _noreturn _start()
 	MA    = b11000111; /* 0 = output; 1 = input */
 	MB    = b11111111; /* 0 = output; 1 = input */
 	EOM   = b10011001; /* to set LVx, output LVx */
+	/* LV0 Data Output    : Output LV0 content */
+	/* LV0 Level Inversion: Disable */
+	/* LV0 Set/Reset      : To Set LV0 */
+	/* LV1 Data Output    : Output LV1 Content */
+	/* LV1 Level Inversion: Disable */
+	/* LV1 Set/Reset      : To Set LV1 */
 	MCC   = b11001011; /* 0 = port mode; 1 = control mode; CO1 output, CO0 output, TI Input, RxD, TxD */
 	PORTC = b00000000;
 	MC    = b00001010; /* 0 = output; 1 = input */
@@ -260,6 +266,7 @@ void _noreturn _start()
 
 /* 018c */
 	func_77b1(); /* always returns 0 */
+/* 018f */
 	func_2AFA(); /* always returns 0 */
 /* 0192 */
 	clear_0xff00_0xff48(); /* always returns 0 */
@@ -278,13 +285,14 @@ void _noreturn _start()
 	if (!(VV[0x14] & 0x20)) {
 /* 01af */
 		func_0F5B(); /* always returns 0 */ /* DEBUG stuck here 1 */
-		if (VV[0x03] & SELF_TEST_MODE) goto 0350;
+		if (VV[0x03] & SELF_TEST_MODE) self_test();
 		if (VV[0x03] & DATA_DUMP_MODE) goto 0392;
 		if (VV[0x14] & 0x04) goto 043E;
 	}
 
 	/* 8>>> Enters the interface waiting state (main routine for data processing). */
 	while (1) {
+/* 01c4 */
 		func_01CF(); /* always returns 0 */
 		if (func_1338())
 			func_05CD(); /* always returns 0 */
@@ -296,8 +304,11 @@ void _noreturn _start()
 void func_01CF()
 {
 	do {
+/* 01CF */
 		40 A2 0E           CALL    $0EA2
+/* 01D2 */
 		check_gate_array_input(); /* always returns 0 */
+/* 01D3 */
 	} while (!func_2127());
 	return 0;
 }
@@ -478,9 +489,11 @@ void func_0309(void)
 	return 0;
 }
 
-0350:
+/* 0350 */
+void _noreturn self_test()
+{
 	40 B9 0D           CALL    $0DB9
-	HL = 038B;
+	HL = 0x038B;
 	40 F4 08           CALL    $08F4
 	40 82 2B           CALL    $2B82
 	wait_for_button(); /* always returns 0 */
@@ -505,6 +518,7 @@ void func_0309(void)
 			func_0434(); /* always returns 0 */
 		}
 	}
+}
 
 038B: DW: 50 53 32 34 31 34 00
           "PS2414"
@@ -1356,6 +1370,12 @@ void killall(void)
 	[0xC005] = 0x0000; /* clears all pins of the printhead. */
 	[0xC007] = 0x0000; /* Latches the phase data for the CR motor. */
 	EOM   = b10011001; /* to set LVx, output LVx */
+	/* LV0 Data Output    : Output LV0 content */
+	/* LV0 Level Inversion: Disable */
+	/* LV0 Set/Reset      : To Set LV0 */
+	/* LV1 Data Output    : Output LV1 Content */
+	/* LV1 Level Inversion: Disable */
+	/* LV1 Set/Reset      : To Set LV1 */
 	VV[0x0f] &= ~0x80; /* 0111 1111 */
 	VV[0x0f] &= ~0x40; /* 1011 1111 */
 	VV[0x01] &=  0xcf; /* 1100 1111 */
@@ -1666,6 +1686,7 @@ void convert_digits_to_base16(uint16_t EA)
 	goto 2C2B;
 	48 44              SKIT    F2 /* ONLINE BUTTON */
 	return 0;
+
 	if (VV[0x13] & 0x10) {
 		func_2FEF(); /* always returns 0 */
 		sw_online_wait();
@@ -1690,24 +1711,37 @@ void func_0EC2()
 		func_31D0(); /* always returns 0 */
 /* 0ece */
 	do {
-		sw_online_wait(); /* DEBUG STUCK HERE WAITING FOR ONLINE BUTTON */
+		sw_online_wait(); /* DEBUG stuck here before online button press */
 		do {
+/* 0ecf */
+			/* while online button is pressed */
 			func_2C37(); /* always returns 0 */
 /* 0ed2 */
 		} while (!skit(F2));
+		/* online button has been released */
+/* 0ed5 */
 		if (VV[0x13] & 0x20)
 			continue;
+/* 0ed9 */
 		if (!func_2E08())
 			break;
+/* 0edd func_32EC() */
+/* 0ee0 sensor_paper_end_debounced() */
 		if (func_32EC() || !sensor_paper_end_debounced())
 			continue;
 		if (!(VV[0x13] & 0x40))
 			break;
+// /* DEBUG STUCK HERE WAITING inside func_2CC0 */
 	} while (func_2CC0() || VV[0x13] & 0x60 || (!func_32E5() && sensor_paper_end_debounced()));
+/* 0ef3 */
 	VV[0x13] &= 0xBB;
+/* 0ef6 */
 	func_0F70(); /* always returns 0 */
-	40 0A 2F           CALL    $2F0A
+/* 0ef9 */
+	40 0A 2F           CALL    $2F0A /* DEBUG now it's stuck here finally2 */
+/* 0efc */
 	goto 2C2B;
+/* 0eff */
 	sw_online_wait();
 	return 0;
 }
@@ -1781,6 +1815,7 @@ void func_0F5B()
 /* 0F6A */
 			func_32CF(); /* always returns 0 */
 /* 0F6D */
+			/* no call, just jmp */
 			func_0EC2(); /* always returns 0 */ /* DEBUG stuck here 2 */
 		}
 	}
@@ -1949,10 +1984,24 @@ void wait_for_button(void)
 void beep_endlessly(void)
 {
 	while (1) {
-		ETMM = 0x00; /* 0000 0000 */ /* ECNT stops counting immediately and is set to 0000h */
-		EOM  = 0xb0;
+		ETMM = 0x00; /* 0000 0000 */
+		/* How and When ECNT is Cleared                   : ECNT stops counting immediately and is set to 0000h */
+		/* ECNT Input Clock Selection                     : Internal Clock */
+		/* Conditions When ECNT Causes a CO0 Output Change: ECNT == ETM0 */
+		/* Conditions When ECNT Causes a CO1 Output Change: ECNT == ETM1 */
+		EOM  = 0xb0; /* 1011 0000 */
+		/* LV0 Data Output    : No Operation */
+		/* LV0 Level Inversion: Disable */
+		/* LV0 Set/Reset      : No Operation */
+		/* LV1 Data Output    : Output LV1 Content */
+		/* LV1 Level Inversion: Enable */
+		/* LV1 Set/Reset      : To Set LV1 */
 		ETM1 = 0x008c; /* 14.7456MHz/140/2 = 4388,571428571 Hz beep */
-		ETMM = 0x0c; /* 0000 1100 */ /* Clear when ECNT = ETM1 */
+		ETMM = 0x0c; /* 0000 1100 */
+		/* How and When ECNT is Cleared                   : Clear when ECNT = ETM1 */
+		/* ECNT Input Clock Selection                     : Internal Clock */
+		/* Conditions When ECNT Causes a CO0 Output Change: ECNT == ETM0 */
+		/* Conditions When ECNT Causes a CO1 Output Change: ECNT == ETM1 */
 	}
 }
 
@@ -1985,12 +2034,32 @@ void one_short_beep(void)
 /* 1084 */
 void beep_60ms(void)
 {
-	ETMM = 0x00; /* 0000 0000 */ /* ECNT stops counting immediately and is set to 0000h */
-	EOM  = 0xb0;
+	ETMM = 0x00; /* 0000 0000 */
+	/* How and When ECNT is Cleared                   : ECNT stops counting immediately and is set to 0000h */
+	/* ECNT Input Clock Selection                     : Internal Clock */
+	/* Conditions When ECNT Causes a CO0 Output Change: ECNT == ETM0 */
+	/* Conditions When ECNT Causes a CO1 Output Change: ECNT == ETM1 */
+	EOM  = 0xb0; /* 1011 0000 */
+	/* LV0 Data Output    : No Operation */
+	/* LV0 Level Inversion: Disable */
+	/* LV0 Set/Reset      : No Operation */
+	/* LV1 Data Output    : Output LV1 Content */
+	/* LV1 Level Inversion: Enable */
+	/* LV1 Set/Reset      : To Set LV1 */
 	ETM1 = 0x008c;
-	ETMM = 0x0c; /* 0000 1100 */ /* Clear when ECNT = ETM1 */
+	ETMM = 0x0c; /* 0000 1100 */
+	/* How and When ECNT is Cleared                   : Clear when ECNT = ETM1 */
+	/* ECNT Input Clock Selection                     : Internal Clock */
+	/* Conditions When ECNT Causes a CO0 Output Change: ECNT == ETM0 */
+	/* Conditions When ECNT Causes a CO1 Output Change: ECNT == ETM1 */
 	delay(60);
-	EOM  = 0x99;
+	EOM  = 0x99; /* 1001 1001 */
+	/* LV0 Data Output    : Output LV0 content */
+	/* LV0 Level Inversion: Disable */
+	/* LV0 Set/Reset      : To Set LV0 */
+	/* LV1 Data Output    : Output LV1 Content */
+	/* LV1 Level Inversion: Disable */
+	/* LV1 Set/Reset      : To Set LV1 */
 	return 0;
 }
 
@@ -4079,9 +4148,15 @@ void __attribute__((interrupt)) etimer_1(void)
 {
 	MKL |= 0x20; /* 0010 0000 */ /* mask INTE0 */
 	EOM = 0x99;
+	/* LV0 Data Output    : Output LV0 content */
+	/* LV0 Level Inversion: Disable */
+	/* LV0 Set/Reset      : To Set LV0 */
+	/* LV1 Data Output    : Output LV1 Content */
+	/* LV1 Level Inversion: Disable */
+	/* LV1 Set/Reset      : To Set LV1 */
 	[0xC005] = 0x0000; /* clears all pins of the printhead. */
 	VV[FLAGS_1] &= 0x7D; /* 0111 1101 */
-	VV[0x0F] &= 0xFD; /* 1111 1101 */
+	VV[0x0f] &= 0xFD; /* 1111 1101 */
 	exx();
 	exa();
 	enable_interrupts();
@@ -5903,35 +5978,50 @@ void func_2C37(void)
 		VV[0x13] &= 0xDF;
 		return 0;
 	}
+	/* DEBUG stuck inside func_2E08 */
 	if (!func_2E08())
 		return 0;
 2CD0:
 	if (!func_32EC())
 		goto 2D47
+/* 2cd3 */
 	if (VV[0x4f] & 0x20)
 		goto 2D5B;
 2CDA:
 	90                 CALT    ($00A0)
+/* 2cdb */
 	40 91 2D           CALL    $2D91
-	90                 CALT    ($00A0)
-	goto 2D03
+/* 2cde */
+	if (!sensor_paper_end_debounced())
+		goto 2D03;
+/* 2ce1 */
 	BC = 0x02D0;
 	59 14              BIT     1,VV:14
 	40 6F 2D           CALL    $2D6F
 	func_313F(); /* always returns 0 */
+/* DEBUG func_313F has set etimer_4 for pf_step() */
+/* 2cea */
 	BC = 0x02AC;
-	40 D2 2E           CALL    $2ED2
-	goto 2D07
+/* 2ced */
+	if (!func_2ed2()) /* DEBUG stuck inside this function while m_pf_pos_abs >= 0 */
+		goto 2D07;
+/* DEBUG returns here after m_pf_pos_abs < 0 */
+/* 2cf1 */
 	func_31D0(); /* always returns 0 */
 	BC = 0x80B2;
-	func_313F(); /* always returns 0 */
+/* 2cf7 */
+	func_313F(); /* always returns 0 */ /* DEBUG get 1s of paper */
+/* 2cf8 */
 	BC = [0x9847];
 	EA = 0x0042;
 	EA += BC;
-2D01: BC = EA;
-	func_313F(); /* always returns 0 */
+2D01:
+	BC = EA;
+/* 2d02 */
+	func_313F(); /* always returns 0 */ /* DEBUG stuck here awhile */
 2D03:
 	40 25 2D           CALL    $2D25
+/* 2d06 */
 	goto 2D1C
 
 2D07:
@@ -5950,7 +6040,7 @@ void func_2C37(void)
 	VV[0x14] |= 0x10;
 	return 0;
 2D25:
-	func_32B9(); /* always returns 0 */
+	func_32B9(); /* always returns 0 */ /* DEBUG stuck here at the before-last bit */
 	VV[0x14] &= 0xFD; /* 1111 1101 */
 	if (!sensor_paper_end_debounced())
 		goto 2D2E;
@@ -5963,6 +6053,7 @@ void func_2C37(void)
 	VV[0x26] = 0x00;
 	VV[0x13] &= 0xFD; /* 1111 1101 */
 	VV[0x14] &= 0xFD; /* 1111 1101 */
+/* 2d46 */
 	return 0;
 2D47:
 	59 14              BIT     1,VV:14
@@ -5972,8 +6063,8 @@ void func_2C37(void)
 	BC = 0x8AB6;
 	func_313F(); /* always returns 0 */
 	BC = 0x01DE;
-	40 D2 2E           CALL    $2ED2
-	goto 2D07
+	if (!func_2ed2())
+		goto 2D07;
 	goto 2D5F
 2D5B:
 	if (!sensor_paper_end_debounced())
@@ -6237,61 +6328,75 @@ void func_2EA6(void)
 		goto 2EAE;
 	HL = [0x990F];
 	[0x9A77] = HL;
-	40 F0 2E           CALL    $2EF0
+	func_2ef0(); /* always returns 0 */
 	return 1;
-2ED2:
-	check_gate_array_input(); /* always returns 0 */
-	HL = 0x990F;
-	EA = [HL];
-	DE = 0x0000;
-	74 AE              DGT     EA,DE
-	return 0;
-	if (VV[0x4f] & 0x10)
-		goto 2ED2
-	DE = EA;
-2EE3:
-	EA = [HL];
-	if (EA == DE)
-		goto 2EE3;
-	if (VV[0x4f] & 0x10)
-		goto 2ED2;
-	40 F0 2E           CALL    $2EF0
+
+/* 2ED2 */
+int func_2ed2()
+{
+	do {
+		check_gate_array_input(); /* always returns 0 */
+		HL = 0x990F;
+		EA = [HL];
+		if (EA <= 0x0000) {
+			/* paper time out */
+			return 0;
+		}
+		if (VV[0x4f] & 0x10)
+			continue;
+		DE = EA;
+		do {
+			EA = [HL];
+		} while (EA == DE);
+	} while (VV[0x4f] & 0x10);
+	func_2ef0(); /* always returns 0 */
 	return 1;
-2EF0:
+}
+
+/* always returns 0 */
+/* 2EF0 */
+void func_2ef0()
+{
 	disable_interrupts();
-	55 01 10           OFFIW   VV:01,$10
-	55 01 22           OFFIW   VV:01,$22
-	goto 2EFE
+	if (!(VV[0x01] & 0x10) || (VV[0x01] & 0x22)) {
+		enable_interrupts();
+		func_32B9(); /* always returns 0 */
+		if (VV[0x01] & 0x80)
+			B |= 0x80;
+		func_313F(); /* always returns 0 */
+		return 0;
+	}
 	[0x990F] = BC;
 	enable_interrupts();
 	return 0;
-2EFE:
-	enable_interrupts();
-	func_32B9(); /* always returns 0 */
-	55 01 80           OFFIW   VV:01,$80
-	B |= 0x80;
-	func_313F(); /* always returns 0 */
-	return 0;
+}
 
 2F0A:
 	59 13              BIT     1,VV:13
+/* 2f0c */
 	55 03 02           OFFIW   VV:03,$02
 	return 1;
+/* 2f10 */
 	5C 13              BIT     4,VV:13
+/* 2f12 */
 	goto 2F1A
 	40 67 30           CALL    $3067
 	func_2FB3(); /* always returns 0 */
 	goto 2F34
 2F1A:
-	45 0F C0           ONIW    VV:0F,$C0
+	45 0F C0           ONIW    VV:0F,$C0 /* 1100 0000 */
+/* 2f1d */
 	55 01 30           OFFIW   VV:01,$30
 	return 1;
+/* 2f21 */
 	40 EC 32           CALL    $32EC
 	59 14              BIT     1,VV:14
+/* 2f26 */
 	55 13 02           OFFIW   VV:13,$02
 	return 1;
 	EA = 0x0000;
 	BC = [0x992B];
+/* 2f31 */
 	74 FD              DEQ     EA,BC
 	return 1;
 2F34:
@@ -6318,8 +6423,10 @@ void func_2EA6(void)
 	74 BD              DLT     EA,BC
 	if (!data_buffer_empty())
 		BC = 0x0000;
+/* 2f62 */
 	if (!func_2210())
 		BC = 0x0000;
+/* 2f68 */
 	[0x9A75] = BC;
 	EA = 0x0000;
 	if (EA == BC)
@@ -6342,16 +6449,18 @@ void func_2EA6(void)
 		goto 2FAA;
 2F96:
 	BC = 0xC805;
-2F99:
-	push(BC);
-	delay(C);
-	if (!sw_online())
-		goto 2FA8;
-	BC = pop();
-	52                 DCR     B
-	goto 2F99
-	VV[0x13] |= 0x10
+	do {
+		push(BC);
+/* 2f9a */
+		delay(C);
+/* 2f9b */
+		if (!sw_online())
+			goto 2FA8;
+		BC = pop();
+	} while (B--);
+	VV[0x13] |= 0x10;
 	one_short_beep(); /* always returns 0 */
+/* 2fa6 */
 	sw_online_wait();
 	return 1;
 2FA8:
@@ -6582,8 +6691,8 @@ void func_304E(void)
 	HL = 0x9843;
 3110:
 	HL = 0x9849;
-	5F 4F              BIT     7,VV:4F
-	VV[0x13] |= 0x08
+	if (!(VV[0x4f] & 0x80))
+		VV[0x13] |= 0x08;
 	EA = [HL];
 	EA--;
 	EA--;
@@ -6629,8 +6738,10 @@ void func_313F(void)
 		enable_interrupts();
 		push(BC);
 		do {
+			/* DEBUG stuck here finally */
 			check_gate_array_input(); /* always returns 0 */
 		} while ((VV[0x0f] & 0x02) || (VV[0x01] & 0x30));
+/* 4749860 */
 /* 3169 */
 		func_31B0(); /* always returns 0 */
 /* 316c */
@@ -6650,7 +6761,11 @@ void func_313F(void)
 		}
 		VV[0x27] = A;
 		PC  |= 0x04; /* 0000 0100 */ /* ONLINE LED */
-		ETMM = 0x04; /* 0000 0100 */ /* free running, clear at every full count ffffh */
+		ETMM = 0x04; /* 0000 0100 */
+		/* How and When ECNT is Cleared                   : Free Running; Clear at Every Full Count FFFFH */
+		/* ECNT Input Clock Selection                     : Internal Clock */
+		/* Conditions When ECNT Causes a CO0 Output Change: ECNT == ETM0 */
+		/* Conditions When ECNT Causes a CO1 Output Change: ECNT == ETM1 */
 		disable_interrupts();
 		ETM0 = ECNT + 100;
 /* 31a4 */
@@ -6737,8 +6852,11 @@ etimer_4:
 
 3214:
 	pf_step(); /* always returns 0 */
+/* 3217 */
 	enable_interrupts();
 	if (!sensor_paper_end()) {
+/* 322f */
+/* when I set the paper somethingy */
 		HL = 0x0000;
 		goto 3232;
 	}
@@ -6795,9 +6913,10 @@ void pf_step(void)
 fw 9, 1, 5, 4, 6, 2, a, 8, 9
 bw 8, a, 2, 6, 4, 5, 1, 9, 8
 
-3289: DW: 09 05 0A 09 06 04 02 09 09 01 08 09 06 09 05 01
-3299: DW: 04 09 0A 08 02 09 09 09 09 09 F4 77 F9 47 A7 0F
-32A9: DW: 95 0C 0C 0B 47 0A E5 09 47 0A 0C 0B 95 0C A7 0F
+3289: DB: 09 05 0A 09 06 04 02 09 09 01
+3293: DB: 08 09 06 09 05 01 04 09 0A 08
+329D: DB: 02 09 09 09 09 09
+32A3: DW: 77F4 47F9 0FA7 0C95 0B0C 0A47 09E5 0A47 0B0C 0C95 0FA7
 
 /* always returns 0 */
 /* 32B9 */
@@ -6927,8 +7046,10 @@ void func_77b1(void)
 /* 77F7: */
 	if (!sensor_home_position_debounced()) {
 		/* go back home */
+/* 77fc / 77ff */
 		[0x9917] = 0x03E3;
-		func_7875(); /* always returns 0 */
+/* 7803 */
+		func_7875(); /* always returns 0 */ /* DEBUG test stuck here */
 	}
 /* 7806: */
 	[0x9917] = 0x0000;
@@ -7136,7 +7257,7 @@ void func_7888(uint16_t val)
 	EA += A;
 	HL = EA;
 	[0x9949] = HL;
-	VV[0x0F] |= 0x02; /* 0000 0010 */
+	VV[0x0f] |= 0x02; /* 0000 0010 */
 	EA = DE;
 	EA -= BC;
 	EA--;
@@ -7146,7 +7267,11 @@ void func_7888(uint16_t val)
 	VV[0x00] &= 0xBF; /* 1011 1111 */
 	start_moving_cr(); /* always returns 0 */
 	VV[0x00] &= 0xEF; /* 1110 1111 */
-	ETMM = 0x04; /* 0000 0100 */ /* free running, clear at every full count ffffh */
+	ETMM = 0x04; /* 0000 0100 */
+	/* How and When ECNT is Cleared                   : Free Running; Clear at Every Full Count FFFFH */
+	/* ECNT Input Clock Selection                     : Internal Clock */
+	/* Conditions When ECNT Causes a CO0 Output Change: ECNT == ETM0 */
+	/* Conditions When ECNT Causes a CO1 Output Change: ECNT == ETM1 */
 	return 0;
 
 /* always returns 0 */
@@ -7165,7 +7290,8 @@ void start_moving_cr(void)
 	case 3: tm1_array = tm1_array_3; break;
 	case 4: tm1_array = tm1_array_4; break;
 	}
-	VV[0x0F] |= 0x90; /* 1001 0000 */
+/* 79bd */
+	VV[0x0f] |= 0x90; /* 1001 0000 */
 	func_7C1F(); /* always returns 0 */
 	if (tm1_array_choice == 4 || tm1_array_choice == 1) {
 		VV[0x00] |= CR_HALF_STEP;
@@ -7177,7 +7303,7 @@ void start_moving_cr(void)
 	stepper_vref(0x05);
 	TMM |= 0xe0; /* 1110 0000 */
 	timer1_func = timer1_2;
-	VV[0x0F] |= CR_SHOULD_STOP; /* 0000 0001 */
+	VV[0x0f] |= CR_SHOULD_STOP; /* 0000 0001 */
 	A = 0xE6;
 	TM1 = A;
 	clear_interrupt(FT1);
@@ -7234,6 +7360,7 @@ int cr_shouldnt_step(void)
 	} else {
 		/* VV[0x0f] & 0x40 */
 		if (cr_countdown--) {
+/* 7a53 */
 			VV[0x0f] &= 0xbf; /* 1011 1111 */
 			timer1_reset(); /* always returns 0 */
 		}
@@ -7332,6 +7459,7 @@ void func_7AC4(void)
 				cr_step_ops--;
 				TM1 = [0x7C9A]; /* 87 */
 			} else {
+/* 7b13 */
 				VV[0x0f] |= CR_SHOULD_STOP; /* 0000 0001 */
 				VV[0x0f] |= 0x40; /* 0100 0000 */
 				VV[0x0f] &= 0x77; /* 0111 0111 */
@@ -7347,12 +7475,14 @@ int func_7B1D(void)
 {
 	[0x9949]--;
 
+/* 7b21 */
 	if (VV[0x00] & CR_SEEK_HOME) {
 		if (EA == 0x0000)
 			beep_and_hang(2, 3); /* HANG, never returns */
 		return 1;
 	}
 
+/* 7b2d */
 	if (VV[0x0f] & 0x08)
 		return 1;
 
@@ -7374,7 +7504,11 @@ int func_7B1D(void)
 				etimer_func = etimer_2;
 				timer1_func = timer1_1;
 			}
-			ETMM = 0x0c; /* 0000 1100 */ /* Clear when ECNT = ETM1 */
+			ETMM = 0x0c; /* 0000 1100 */
+			/* How and When ECNT is Cleared                   : Clear when ECNT = ETM1 */
+			/* ECNT Input Clock Selection                     : Internal Clock */
+			/* Conditions When ECNT Causes a CO0 Output Change: ECNT == ETM0 */
+			/* Conditions When ECNT Causes a CO1 Output Change: ECNT == ETM1 */
 			VV[FLAGS_1] |= 0x20; /* 0010 0000 */
 			skit(FE1);
 			skit(FE0);
@@ -7465,6 +7599,18 @@ INA tdA INB tdB
 1   0   0   1
 1   0   0   0
 /* it's going backwards! it's going back home =D */
+
+5, 1, 9, 8, a, 2, 6, 4
+
+!tdB!tdA!INB!INA
+0   1   0   1
+0   0   0   1
+1   0   0   1
+1   0   0   0
+1   0   1   0
+0   0   1   0
+0   1   1   0
+0   1   0   0
 
 /* 7B86 */
 int sensor_home_position_debounced(void)
