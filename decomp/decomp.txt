@@ -497,12 +497,12 @@ void _noreturn self_test()
 	40 F4 08           CALL    $08F4
 	40 82 2B           CALL    $2B82
 	wait_for_button(); /* always returns 0 */
-	func_090A(); /* always returns 0 */
+	func_090A(); /* always returns 0 */ /* DEBUG test stuck here, must press online a shitload of times */
 	A = 0x20;
 	VV[0x28] = A;
 	while (42) {
 		push(VA);
-		40 A2 0E           CALL    $0EA2
+		40 A2 0E           CALL    $0EA2 /* more online presses */
 		VA = pop();
 		VV[0x16] = A;
 		print_this_char = A;
@@ -1026,7 +1026,7 @@ int func_08B1(void)
 	return 0;
 }
 
-08F4:
+08F4: /* DEBUG test stuck here */
 	push(HL);
 	40 A5 0E           CALL    $0EA5
 	HL = pop();
@@ -1053,7 +1053,7 @@ void func_090A(void)
 	HL = 0x09D5;
 	A = VV[DIPSW1];
 	[0xFF8A] = A;
-	func_0955(); /* always returns 0 */
+	func_0955(); /* always returns 0 */ /* DEBUG test stuck here */
 	func_0955(); /* always returns 0 */
 	A = VV[DIPSW1];
 	B = A;
@@ -1116,7 +1116,7 @@ void func_095E(void)
 	[DE] = A;
 	push(HL);
 	HL = 0xFF00;
-	40 F4 08           CALL    $08F4
+	40 F4 08           CALL    $08F4 /* DEBUG test stuck here */
 	HL = pop();
 	while ([HL++] != 0x02);
 	return 0;
@@ -7049,7 +7049,7 @@ void func_77b1(void)
 /* 77fc / 77ff */
 		[0x9917] = 0x03E3;
 /* 7803 */
-		func_7875(); /* always returns 0 */ /* DEBUG test stuck here */
+		func_7875(); /* always returns 0 */
 	}
 /* 7806: */
 	[0x9917] = 0x0000;
@@ -7347,11 +7347,13 @@ void __attribute__((interrupt)) timer1_2(void)
 int cr_shouldnt_step(void)
 {
 	if (!(VV[0x0f] & 0x40) || !(VV[0x0f] & CR_SHOULD_STOP)) /* 0100 0001 */
+/* 7a37 */
 		return 0; /* cr_step */
 	if (VV[0x0f] & CR_SHOULD_STOP) { /* 0000 0001 */
 		VV[0x0f] &= ~CR_SHOULD_STOP; /* 1111 1110 */
 		if (!(VV[0x0f] & 0x40)) {
 			stepper_vref(0x06);
+/* 7a4f */
 			return 0; /* cr_step */
 		}
 		stepper_vref(0x07);
@@ -7363,6 +7365,9 @@ int cr_shouldnt_step(void)
 /* 7a53 */
 			VV[0x0f] &= 0xbf; /* 1011 1111 */
 			timer1_reset(); /* always returns 0 */
+/* 7a59 */
+		} else {
+/* 7a52 */
 		}
 	}
 	return 1;
