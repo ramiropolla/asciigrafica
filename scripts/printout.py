@@ -40,7 +40,7 @@ print("Y[%d:%d]" % (min_y, max_y))
 # min_x is considered a border, so we add that to the other side to get the full width
 width = min_x + max_x
 # y is divided by 8 to get 9 pixels per line, + 1 line to draw + 2 empty lines
-height = (max_y - min_y + (72*3)) / 8
+height = (max_y - min_y + (72*3)) / 6
 
 print("width %d height %d" % (width, height))
 
@@ -53,7 +53,7 @@ for line in fp:
 		split = line.split(' ')
 		y = int(split[1])
 		y = y - min_y + 72
-		y = y / 8
+		y = y / 6
 		x = int(split[2])
 		v = int(split[3], 16)
 		if v & 0x100:
