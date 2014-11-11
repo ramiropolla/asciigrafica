@@ -1,0 +1,54 @@
+diff --git a/src/emu/cpu/upd7810/upd7810.c b/src/emu/cpu/upd7810/upd7810.c
+index 5ef07dc..11b738d 100644
+--- a/src/emu/cpu/upd7810/upd7810.c
++++ b/src/emu/cpu/upd7810/upd7810.c
+@@ -703,11 +703,49 @@ void upd7810_device::WP(offs_t port, UINT8 data)
+ 	}
+ }
+ 
++typedef struct {
++	int length;
++	int go_down;
++	UINT8 c[11];
++} letra;
++static letra letras[295] = {{0}};
++
+ void upd7810_device::upd7810_take_irq()
+ {
+ 	UINT16 vector = 0;
+ 	int irqline = 0;
+ 
++
++if (0) {
++	if (PC == 0x27e8) {
++		UINT8 print_this_char = RM(0x9837);
++		UINT8 char_length = RM(0x983B);
++		int go_down = RM(0x9840) & 0x02;
++		UINT16 p = HL;
++		int i;
++
++//		printf("char %02x length %d\n", print_this_char, char_length);
++
++		letras[print_this_char].length = char_length;
++
++		printf("\t[0x%02x] = { %2d, %d, { ", print_this_char, go_down, char_length);
++		for (i = 0; i < char_length; i++) {
++			letras[print_this_char].c[i] = RM(p+i);
++			printf("0x%02x, ", RM(p+i));
++		}
++		printf("}, },\n");
++#if 0
++		while (char_length--) {
++			A = B;
++			A ^= 0xff;
++			A &= [HL++];
++			B = A;
++			[DE++] = A<<8;
++		}
++#endif
++	}
++}
++
+ 	/* global interrupt disable? */
+ 	if (0 == IFF)
+ 		return;
