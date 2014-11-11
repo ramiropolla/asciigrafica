@@ -44,36 +44,39 @@ height = (max_y - min_y + (72*3)) / 6
 
 print("width %d height %d" % (width, height))
 
-data = np.zeros((height,width))
+data = np.zeros((height,width,3))
 
 fp.seek(0)
 
+dot = [145, 255, 0]
 for line in fp:
 	if "FIRE0" in line:
 		split = line.split(' ')
 		y = int(split[1])
+		if y == 200:
+			continue
 		y = y - min_y + 72
 		y = y / 6
 		x = int(split[2])
 		v = int(split[3], 16)
 		if v & 0x100:
-			data[height-1-(y+0)][x] = 255
+			data[height-1-(y+0)][x] = dot
 		if v & 0x001:
-			data[height-1-(y+1)][x] = 255
+			data[height-1-(y+1)][x] = dot
 		if v & 0x002:
-			data[height-1-(y+2)][x] = 255
+			data[height-1-(y+2)][x] = dot
 		if v & 0x004:
-			data[height-1-(y+3)][x] = 255
+			data[height-1-(y+3)][x] = dot
 		if v & 0x008:
-			data[height-1-(y+4)][x] = 255
+			data[height-1-(y+4)][x] = dot
 		if v & 0x010:
-			data[height-1-(y+5)][x] = 255
+			data[height-1-(y+5)][x] = dot
 		if v & 0x020:
-			data[height-1-(y+6)][x] = 255
+			data[height-1-(y+6)][x] = dot
 		if v & 0x040:
-			data[height-1-(y+7)][x] = 255
+			data[height-1-(y+7)][x] = dot
 		if v & 0x080:
-			data[height-1-(y+8)][x] = 255
+			data[height-1-(y+8)][x] = dot
 
 img = toimage(data)
 imsave(fname_out, img)
